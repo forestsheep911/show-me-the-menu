@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { dishPool } from "@/data/dishes";
+import { useMenuStore } from "@/store/menuStore";
 import { cn } from "@/lib/utils";
 import { RefreshCw } from "lucide-react";
 import { useState } from "react";
@@ -15,7 +15,8 @@ interface DishSelectorProps {
 
 export function DishSelector({ category, currentDish, onSelect, trigger }: DishSelectorProps) {
   const [open, setOpen] = useState(false);
-  const dishes = dishPool[category as keyof typeof dishPool] || [];
+  const storeDishes = useMenuStore((state) => state.dishes);
+  const dishes = storeDishes[category] || [];
 
   const handleSelect = (dish: string) => {
     onSelect(dish);
@@ -26,7 +27,7 @@ export function DishSelector({ category, currentDish, onSelect, trigger }: DishS
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         {trigger || (
-          <button className="text-[1.1em] text-gray-800 font-semibold hover:text-[#ff7043] hover:underline cursor-pointer transition-colors text-left w-full">
+          <button className="text-3xl text-gray-900 font-bold hover:text-[#ff7043] hover:underline cursor-pointer transition-colors text-left w-full py-1 leading-tight">
             {currentDish}
           </button>
         )}
@@ -40,6 +41,16 @@ export function DishSelector({ category, currentDish, onSelect, trigger }: DishS
         </DialogHeader>
         <ScrollArea className="h-[300px] w-full rounded-md border p-4">
           <div className="grid grid-cols-2 gap-2">
+            <Button
+              variant={currentDish === "无" ? "secondary" : "ghost"}
+              className={cn(
+                "justify-start h-auto py-3 px-4",
+                currentDish === "无" && "bg-[#ffcc80]/20 text-[#ff7043] hover:bg-[#ffcc80]/30"
+              )}
+              onClick={() => handleSelect("无")}
+            >
+              无
+            </Button>
             {dishes.map((dish) => (
               <Button
                 key={dish}
@@ -57,8 +68,10 @@ export function DishSelector({ category, currentDish, onSelect, trigger }: DishS
         </ScrollArea>
         <div className="flex justify-end pt-4 border-t">
             <Button variant="outline" size="sm" onClick={() => {
-                const random = dishes[Math.floor(Math.random() * dishes.length)];
-                handleSelect(random);
+                if (dishes.length > 0) {
+                  const random = dishes[Math.floor(Math.random() * dishes.length)];
+                  handleSelect(random);
+                }
             }}>
                 <RefreshCw className="w-4 h-4 mr-2" />
                 随机换一个
@@ -68,4 +81,3 @@ export function DishSelector({ category, currentDish, onSelect, trigger }: DishS
     </Dialog>
   );
 }
-

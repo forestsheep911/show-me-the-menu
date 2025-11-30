@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
-import { ZCOOL_KuaiLe } from "next/font/google";
+import { Noto_Sans_SC } from "next/font/google";
 import "./globals.css";
 
-const zcoolKuaiLe = ZCOOL_KuaiLe({
-  weight: "400",
-  subsets: ["latin"], // Note: Google Fonts subsets for Chinese fonts might be limited in Next.js loader, but we can try or use preload: false
+const notoSansSC = Noto_Sans_SC({
+  weight: ["400", "500", "700"],
+  subsets: ["latin"],
   preload: false,
-  variable: "--font-zcool",
+  variable: "--font-noto-sans-sc",
 });
 
 export const metadata: Metadata = {
@@ -22,7 +22,7 @@ export default function RootLayout({
   return (
     <html lang="zh-CN">
       <body
-        className={`${zcoolKuaiLe.variable} antialiased font-zcool`}
+        className={`${notoSansSC.variable} antialiased font-sans`}
       >
         {children}
       </body>

@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>本周美味食谱 🍽️</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <header>
+        <h1>🏠 幸福家庭 • 本周食谱</h1>
+        <p style="color: #888; margin-top: 10px;">营养均衡 · 健康美味 · 快乐成长</p>
+    </header>
+
+    <div class="menu-container" id="menuContainer">
+        <!-- 菜单卡片将通过 JS 插入这里 -->
+    </div>
+
+    <script src="menu_data.js"></script>
+    <script>
+        const container = document.getElementById('menuContainer');
+
+        weeklyMenu.forEach(dayMenu => {
+            const card = document.createElement('div');
+            card.className = 'day-card';
+            // 动态设置边框颜色
+            card.style.borderColor = dayMenu.color;
+
+            // 构建菜单项 HTML
+            let itemsHtml = '';
+            const order = ['大荤', '小荤', '蔬菜', '汤', '主食'];
+            
+            order.forEach(category => {
+                if (dayMenu.items[category]) {
+                    itemsHtml += `
+                        <div class="menu-item">
+                            <span class="label">${category}</span>
+                            <span class="dish-name">${dayMenu.items[category]}</span>
+                        </div>
+                    `;
+                }
+            });
+
+            // 点心单独处理
+            let snackHtml = '';
+            if (dayMenu.items['点心']) {
+                snackHtml = `
+                    <div class="snack-section">
+                        <span class="snack-label">🍰 下午点心</span><br>
+                        <span class="snack-name">${dayMenu.items['点心']}</span>
+                    </div>
+                `;
+            }
+
+            card.innerHTML = `
+                <div class="card-header" style="background-color: ${dayMenu.color};">
+                    <div>${dayMenu.day}</div>
+                    <div style="font-size: 0.8em; opacity: 0.9;">${dayMenu.theme}</div>
+                </div>
+                <div class="card-body">
+                    ${itemsHtml}
+                    ${snackHtml}
+                </div>
+            `;
+
+            container.appendChild(card);
+        });
+    </script>
+</body>
+</html>
+

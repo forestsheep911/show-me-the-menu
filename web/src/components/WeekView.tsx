@@ -70,6 +70,7 @@ export function WeekView() {
         </div>
 
         <DndContext 
+            id="menu-dnd-context"
             sensors={sensors} 
             collisionDetection={closestCenter} 
             onDragEnd={handleDragEnd}
@@ -78,12 +79,13 @@ export function WeekView() {
                 items={weeklyMenu.map(d => d.day)} 
                 strategy={horizontalListSortingStrategy}
             >
-                <div className="flex flex-wrap justify-center gap-5 w-full max-w-[1200px]">
+                <div className="grid grid-cols-1 md:grid-cols-5 gap-4 w-full px-4 h-full">
                     {weeklyMenu.map((dayMenu, index) => (
                         <DayCard 
                             key={dayMenu.day} 
                             menu={dayMenu} 
                             index={index}
+                            className="w-full h-full"
                         />
                     ))}
                 </div>

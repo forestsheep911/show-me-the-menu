@@ -36,9 +36,10 @@ export function DayCard({ menu, index, className }: DayCardProps) {
   return (
     <div 
       ref={setNodeRef}
+      suppressHydrationWarning
       style={{ ...style, borderColor: menu.color }}
       className={cn(
-        "bg-white rounded-[20px] w-[200px] shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden border-2 border-transparent select-none",
+        "bg-white rounded-[20px] shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden border-2 border-transparent select-none flex flex-col",
         isDragging ? "shadow-2xl scale-105 cursor-grabbing" : "cursor-grab",
         className
       )}
@@ -50,7 +51,6 @@ export function DayCard({ menu, index, className }: DayCardProps) {
         style={{ backgroundColor: menu.color }}
       >
         <div>{menu.day}</div>
-        <div className="text-[0.8em] opacity-90">{menu.theme}</div>
       </div>
       
       <div className="p-4 cursor-default" onPointerDown={(e) => e.stopPropagation()}> 
@@ -71,33 +71,6 @@ export function DayCard({ menu, index, className }: DayCardProps) {
             </div>
           );
         })}
-
-        <div className="bg-[#fff8e1] -mx-4 mt-2 p-3 text-center border-t border-dashed border-[#ffe082]">
-            <span className="text-xs text-[#f57f17]">🍰 下午点心</span><br />
-            {menu.items['点心'] ? (
-                <DishSelector 
-                    category="点心"
-                    currentDish={menu.items['点心']}
-                    onSelect={(newDish) => updateDayItem(index, "点心", newDish)}
-                    trigger={
-                        <span className="text-[#f57f17] font-bold cursor-pointer hover:underline">
-                            {menu.items['点心']}
-                        </span>
-                    }
-                />
-            ) : (
-                <DishSelector 
-                    category="点心"
-                    currentDish=""
-                    onSelect={(newDish) => updateDayItem(index, "点心", newDish)}
-                    trigger={
-                        <span className="text-[#f57f17]/50 text-sm cursor-pointer hover:underline border border-dashed border-[#f57f17]/30 px-2 py-1 rounded">
-                            + 添加点心
-                        </span>
-                    }
-                />
-            )}
-        </div>
       </div>
     </div>
   );
