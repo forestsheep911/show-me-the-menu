@@ -4,6 +4,8 @@ import { useMenuStore } from "@/store/menuStore";
 import { DishSelector } from "./DishSelector";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { Trash2 } from "lucide-react";
+import { Button } from "./ui/button";
 
 interface DayCardProps {
   menu: DayMenu;
@@ -11,11 +13,12 @@ interface DayCardProps {
   className?: string;
 }
 
-const CATEGORY_ORDER = ['大荤', '小荤', '蔬菜', '汤', '主食'];
-
 export function DayCard({ menu, index, className }: DayCardProps) {
-  const updateDayItem = useMenuStore((state) => state.updateDayItem);
-  
+  const updateEntryDish = useMenuStore((state) => state.updateEntryDish);
+  const addMenuEntry = useMenuStore((state) => state.addMenuEntry);
+  const removeMenuEntry = useMenuStore((state) => state.removeMenuEntry);
+  const dishes = useMenuStore((state) => state.dishes);
+
   // dnd-kit hook for sortable items
   const {
     attributes,
@@ -53,24 +56,55 @@ export function DayCard({ menu, index, className }: DayCardProps) {
         <div>{menu.day}</div>
       </div>
       
-      <div className="p-4 cursor-default" onPointerDown={(e) => e.stopPropagation()}> 
+      <div className="p-4 cursor-default flex-1 flex flex-col gap-4" onPointerDown={(e) => e.stopPropagation()}> 
         {/* Stop propagation so clicking inside doesn't trigger drag */}
-        
-        {CATEGORY_ORDER.map((category) => {
-          const item = menu.items[category];
-          if (!item) return null;
-          
+        {menu.entries.map((entry) => {
+          const dish = dishes.find((d) => d.name === entry.dishName);
+          const dishTags = dish?.tags ?? [];
+
           return (
-            <div key={category} className="mb-3 border-b border-dashed border-gray-100 pb-2 last:border-0 last:mb-0 last:pb-0">
-              <span className="block text-xs text-gray-400 mb-[2px]">{category}</span>
-              <DishSelector 
-                category={category}
-                currentDish={item}
-                onSelect={(newDish) => updateDayItem(index, category, newDish)}
+            <div
+              key={entry.id}
+              className="rounded-xl border border-gray-100 p-3 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.02)] bg-white/70"
+            >
+              <div className="flex items-start justify-between gap-3 mb-2">
+                <div className="flex flex-wrap gap-1">
+                  {dishTags.length > 0 ? (
+                    dishTags.map((tag) => (
+                      <span key={tag} className="px-2 py-0.5 text-xs rounded-full bg-gray-100 text-gray-600">
+                        {tag}
+                      </span>
+                    ))
+                  ) : (
+                    <span className="text-xs text-gray-400">
+                      {entry.dishName ? "该菜暂未设置标签" : "等待选择菜品"}
+                    </span>
+                  )}
+                </div>
+                <button
+                  onClick={() => removeMenuEntry(index, entry.id)}
+                  className="text-gray-400 hover:text-red-500 transition-colors"
+                  aria-label="删除菜品"
+                >
+                  <Trash2 className="size-4" />
+                </button>
+              </div>
+              <DishSelector
+                entryTags={entry.tags}
+                currentDish={entry.dishName || "点击选择菜品"}
+                onSelect={(newDish) => updateEntryDish(index, entry.id, newDish)}
               />
             </div>
           );
         })}
+
+        <Button
+          variant="secondary"
+          className="w-full border-dashed border-2 border-gray-200 text-gray-500 hover:text-[#ff7043] hover:border-[#ff7043]/50"
+          onClick={() => addMenuEntry(index)}
+        >
+          + 添加菜品
+        </Button>
       </div>
     </div>
   );

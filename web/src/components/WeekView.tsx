@@ -3,10 +3,9 @@
 import { useMenuStore } from "@/store/menuStore";
 import { DayCard } from "./DayCard";
 import { DndContext, DragEndEvent, closestCenter, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
-import { SortableContext, horizontalListSortingStrategy, arrayMove } from "@dnd-kit/sortable";
-import { useEffect } from "react";
+import { SortableContext, horizontalListSortingStrategy } from "@dnd-kit/sortable";
 import { Button } from "./ui/button";
-import { RefreshCw, Shuffle } from "lucide-react";
+import { Shuffle } from "lucide-react";
 
 export function WeekView() {
   const { weeklyMenu, setWeeklyMenu, generateNewMenu } = useMenuStore();
@@ -34,21 +33,21 @@ export function WeekView() {
       // 我们来做一个“交换内容但保持周几Title不变”的逻辑
       
       const newMenu = [...weeklyMenu];
-      // 交换 items, theme, color
-      const tempItems = newMenu[oldIndex].items;
+      // 交换 entries, theme, color
+      const tempEntries = newMenu[oldIndex].entries;
       const tempTheme = newMenu[oldIndex].theme;
       const tempColor = newMenu[oldIndex].color;
 
       newMenu[oldIndex] = {
         ...newMenu[oldIndex],
-        items: newMenu[newIndex].items,
+        entries: newMenu[newIndex].entries,
         theme: newMenu[newIndex].theme,
         color: newMenu[newIndex].color
       };
 
       newMenu[newIndex] = {
         ...newMenu[newIndex],
-        items: tempItems,
+        entries: tempEntries,
         theme: tempTheme,
         color: tempColor
       };

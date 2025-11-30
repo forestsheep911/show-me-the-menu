@@ -3,79 +3,170 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useMenuStore } from "@/store/menuStore";
 import { cn } from "@/lib/utils";
+import { matchesSearch } from "@/lib/search";
 import { RefreshCw } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 interface DishSelectorProps {
-  category: string;
+  entryTags: string[];
   currentDish: string;
   onSelect: (dish: string) => void;
   trigger?: React.ReactNode;
 }
 
-export function DishSelector({ category, currentDish, onSelect, trigger }: DishSelectorProps) {
+export function DishSelector({ entryTags, currentDish, onSelect, trigger }: DishSelectorProps) {
   const [open, setOpen] = useState(false);
-  const storeDishes = useMenuStore((state) => state.dishes);
-  const dishes = storeDishes[category] || [];
+  const [searchQuery, setSearchQuery] = useState("");
+  const [newDish, setNewDish] = useState("");
+  const [activeTags, setActiveTags] = useState<string[]>(entryTags);
+  const dishes = useMenuStore((state) => state.dishes);
+  const availableTags = useMenuStore((state) => state.tags);
+  const addDish = useMenuStore((state) => state.addDish);
+
+  const normalizedQuery = searchQuery.trim().toLowerCase();
+  const filteredDishes = useMemo(() => {
+    const byTag =
+      activeTags.length === 0
+        ? dishes
+        : dishes.filter((dish) => activeTags.every((tag) => dish.tags.includes(tag)));
+
+    if (!normalizedQuery) return byTag;
+    return byTag.filter((dish) => matchesSearch(dish.name, normalizedQuery));
+  }, [dishes, activeTags, normalizedQuery]);
 
   const handleSelect = (dish: string) => {
     onSelect(dish);
     setOpen(false);
   };
 
+  const handleAddDish = () => {
+    const trimmed = newDish.trim();
+    if (!trimmed) return;
+    addDish(trimmed, activeTags.length ? activeTags : entryTags);
+    setNewDish("");
+    handleSelect(trimmed);
+  };
+
+  const handleDialogChange = (nextOpen: boolean) => {
+    setOpen(nextOpen);
+    if (nextOpen) {
+      setActiveTags(entryTags);
+    }
+  };
+
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={handleDialogChange}>
       <DialogTrigger asChild>
         {trigger || (
-          <button className="text-3xl text-gray-900 font-bold hover:text-[#ff7043] hover:underline cursor-pointer transition-colors text-left w-full py-1 leading-tight">
-            {currentDish}
+          <button className="text-2xl font-semibold text-gray-900 hover:text-[#ff7043] hover:underline cursor-pointer transition-colors text-left w-full py-1 leading-tight">
+            {currentDish || "点击选择菜品"}
           </button>
         )}
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[820px]">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            替换 {category}
-            <span className="text-sm font-normal text-gray-500">({dishes.length} 种选择)</span>
+          <DialogTitle className="flex flex-col gap-2 text-left">
+            <div className="flex items-center gap-2">
+              替换菜品
+              <span className="text-sm font-normal text-gray-500">{filteredDishes.length} 个结果</span>
+            </div>
+            <p className="text-xs text-gray-400">
+              默认筛选标签（由后台设定）：{entryTags.length ? entryTags.join(" / ") : "未设置"}
+            </p>
           </DialogTitle>
         </DialogHeader>
-        <ScrollArea className="h-[300px] w-full rounded-md border p-4">
-          <div className="grid grid-cols-2 gap-2">
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <input
+              type="text"
+              placeholder="搜索菜品..."
+              value={searchQuery}
+              onChange={(event) => setSearchQuery(event.target.value)}
+              className="w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm focus:border-[#ff7043] focus:outline-none focus:ring-2 focus:ring-[#ffcc80]/50"
+            />
+            <div className="flex flex-wrap gap-2">
+              {availableTags.map((tag) => {
+                const isActive = activeTags.includes(tag);
+                return (
+                  <button
+                    key={tag}
+                    onClick={() => {
+                      const updated = isActive
+                        ? activeTags.filter((t) => t !== tag)
+                        : [...activeTags, tag];
+                      setActiveTags(updated);
+                    }}
+                    className={cn(
+                      "px-3 py-1 text-xs rounded-full border transition-colors",
+                      isActive
+                        ? "bg-[#ff7043]/10 border-[#ff7043]/40 text-[#f4511e]"
+                        : "border-gray-200 text-gray-500 hover:border-gray-300"
+                    )}
+                  >
+                    {tag}
+                  </button>
+                );
+              })}
+              {availableTags.length === 0 && <span className="text-xs text-gray-400">暂无标签</span>}
+            </div>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                placeholder="新菜品名称"
+                value={newDish}
+                onChange={(event) => setNewDish(event.target.value)}
+                className="flex-1 rounded-md border border-dashed border-gray-300 bg-white px-3 py-2 text-sm focus:border-[#ff7043] focus:outline-none focus:ring-2 focus:ring-[#ffcc80]/50"
+              />
+              <Button variant="secondary" onClick={handleAddDish} disabled={!newDish.trim()}>
+                + 新建菜品
+              </Button>
+            </div>
+          </div>
+        </div>
+        <ScrollArea className="mt-4 h-[420px] w-full rounded-md border p-4">
+          <div className="grid grid-cols-3 gap-3">
             <Button
-              variant={currentDish === "无" ? "secondary" : "ghost"}
+              variant={currentDish === "" ? "secondary" : "ghost"}
               className={cn(
                 "justify-start h-auto py-3 px-4",
-                currentDish === "无" && "bg-[#ffcc80]/20 text-[#ff7043] hover:bg-[#ffcc80]/30"
+                currentDish === "" && "bg-[#ffcc80]/20 text-[#ff7043] hover:bg-[#ffcc80]/30"
               )}
-              onClick={() => handleSelect("无")}
+              onClick={() => handleSelect("")}
             >
-              无
+              清空菜品
             </Button>
-            {dishes.map((dish) => (
+            {filteredDishes.map((dish) => (
               <Button
-                key={dish}
-                variant={currentDish === dish ? "secondary" : "ghost"}
+                key={dish.name}
+                variant={currentDish === dish.name ? "secondary" : "ghost"}
                 className={cn(
-                  "justify-start h-auto py-3 px-4",
-                  currentDish === dish && "bg-[#ffcc80]/20 text-[#ff7043] hover:bg-[#ffcc80]/30"
+                  "justify-start h-auto py-3 px-4 flex flex-col items-start gap-1",
+                  currentDish === dish.name && "bg-[#ffcc80]/20 text-[#ff7043] hover:bg-[#ffcc80]/30"
                 )}
-                onClick={() => handleSelect(dish)}
+                onClick={() => handleSelect(dish.name)}
               >
-                {dish}
+                <span>{dish.name}</span>
+                <span className="text-xs text-gray-400">
+                  {dish.tags.length ? dish.tags.join(" / ") : "无标签"}
+                </span>
               </Button>
             ))}
           </div>
         </ScrollArea>
         <div className="flex justify-end pt-4 border-t">
-            <Button variant="outline" size="sm" onClick={() => {
-                if (dishes.length > 0) {
-                  const random = dishes[Math.floor(Math.random() * dishes.length)];
-                  handleSelect(random);
-                }
-            }}>
-                <RefreshCw className="w-4 h-4 mr-2" />
-                随机换一个
-            </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              if (filteredDishes.length > 0) {
+                const random = filteredDishes[Math.floor(Math.random() * filteredDishes.length)];
+                handleSelect(random.name);
+              }
+            }}
+          >
+            <RefreshCw className="w-4 h-4 mr-2" />
+            随机换一个
+          </Button>
         </div>
       </DialogContent>
     </Dialog>

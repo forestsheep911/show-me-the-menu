@@ -10,7 +10,7 @@ export default function Home() {
          <Button variant="outline" asChild className="bg-white/80 backdrop-blur shadow-sm hover:bg-white">
            <Link href="/edit" className="flex items-center gap-2">
              <Settings className="size-4" />
-             <span>菜品管理</span>
+             <span>后台管理</span>
            </Link>
          </Button>
       </div>
