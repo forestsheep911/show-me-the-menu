@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
-import { WeeklyMenu, MenuEntry, Dish } from "@/types/menu";
+import { WeeklyMenu, MenuEntry, Dish, Tag } from "@/types/menu";
 import { initialWeeklyMenu } from "@/data/initialMenu";
 import { defaultDishes, defaultDishTags } from "@/data/dishes";
 import { initialIngredients } from "@/data/ingredients";
@@ -25,7 +25,7 @@ const filterDishesByTags = (dishes: Dish[], tags: string[]) => {
 interface MenuState {
   weeklyMenu: WeeklyMenu;
   dishes: Dish[];
-  tags: string[];
+  tags: Tag[];
   ingredients: string[];
 
   setWeeklyMenu: (menu: WeeklyMenu) => void;
@@ -38,12 +38,15 @@ interface MenuState {
   removeDish: (dishName: string) => void;
   updateDish: (oldName: string, updates: Partial<Dish>) => void;
 
-  addTag: (tag: string) => void;
-  removeTag: (tag: string) => void;
+  addTag: (name: string, color?: string) => void;
+  removeTag: (tagName: string) => void;
+  updateTag: (tagName: string, updates: Partial<Tag>) => void;
 
   addIngredient: (name: string) => void;
   removeIngredient: (name: string) => void;
   updateIngredient: (oldName: string, newName: string) => void;
+
+  getTagColor: (tagName: string) => string;
 }
 
 export const useMenuStore = create<MenuState>()(
@@ -162,29 +165,70 @@ export const useMenuStore = create<MenuState>()(
           };
         }),
 
-      addTag: (tag) =>
+      addTag: (name, color = "#6b7280") =>
         set((state) => {
-          const trimmed = tag.trim();
-          if (!trimmed || state.tags.includes(trimmed)) return state;
-          return { tags: [...state.tags, trimmed] };
+          const trimmed = name.trim();
+          if (!trimmed || state.tags.some((t) => t.name === trimmed)) return state;
+          return { tags: [...state.tags, { name: trimmed, color }] };
         }),
 
-      removeTag: (tag) =>
+      removeTag: (tagName) =>
         set((state) => {
-          const updatedTags = state.tags.filter((t) => t !== tag);
+          const updatedTags = state.tags.filter((t) => t.name !== tagName);
           const cleanedDishes = state.dishes.map((dish) => ({
             ...dish,
-            tags: dish.tags.filter((t) => t !== tag),
+            tags: dish.tags.filter((t) => t !== tagName),
           }));
           const cleanedMenu = state.weeklyMenu.map((day) => ({
             ...day,
             entries: day.entries.map((entry) => ({
               ...entry,
-              tags: entry.tags.filter((t) => t !== tag),
+              tags: entry.tags.filter((t) => t !== tagName),
             })),
           }));
           return { tags: updatedTags, dishes: cleanedDishes, weeklyMenu: cleanedMenu };
         }),
+
+      updateTag: (tagName, updates) =>
+        set((state) => {
+          const trimmedName = updates.name?.trim();
+          // 如果要改名，检查新名字是否已存在
+          if (trimmedName && state.tags.some((t) => t.name === trimmedName && t.name !== tagName)) {
+            return state;
+          }
+
+          const updatedTags = state.tags.map((t) =>
+            t.name === tagName
+              ? { ...t, ...updates, name: trimmedName ?? t.name }
+              : t
+          );
+
+          // 如果标签名改了，需要更新菜品和菜单中的引用
+          let updatedDishes = state.dishes;
+          let updatedMenu = state.weeklyMenu;
+
+          if (trimmedName && trimmedName !== tagName) {
+            updatedDishes = state.dishes.map((dish) => ({
+              ...dish,
+              tags: dish.tags.map((t) => (t === tagName ? trimmedName : t)),
+            }));
+            updatedMenu = state.weeklyMenu.map((day) => ({
+              ...day,
+              entries: day.entries.map((entry) => ({
+                ...entry,
+                tags: entry.tags.map((t) => (t === tagName ? trimmedName : t)),
+              })),
+            }));
+          }
+
+          return { tags: updatedTags, dishes: updatedDishes, weeklyMenu: updatedMenu };
+        }),
+
+      getTagColor: (tagName) => {
+        const state = useMenuStore.getState();
+        const tag = state.tags.find((t) => t.name === tagName);
+        return tag?.color ?? "#6b7280";
+      },
 
       addIngredient: (name) =>
         set((state) => {
@@ -216,6 +260,58 @@ export const useMenuStore = create<MenuState>()(
         ingredients: state.ingredients,
         tags: state.tags,
       }),
+      // 数据迁移：确保从 localStorage 恢复的旧数据结构兼容
+      merge: (persistedState, currentState) => {
+        const persisted = persistedState as Partial<MenuState> | undefined;
+        if (!persisted) return currentState;
+
+        // 确保 weeklyMenu 中每个 day 都有 entries 数组
+        const migratedMenu = Array.isArray(persisted.weeklyMenu)
+          ? persisted.weeklyMenu.map((day, index) => ({
+              ...initialWeeklyMenu[index],
+              ...day,
+              entries: Array.isArray(day?.entries) ? day.entries : initialWeeklyMenu[index].entries,
+            }))
+          : currentState.weeklyMenu;
+
+        // 确保 dishes 是数组格式（旧版本可能是对象格式）
+        const migratedDishes = Array.isArray(persisted.dishes) 
+          ? persisted.dishes 
+          : currentState.dishes;
+
+        // 确保 tags 是数组格式，并迁移旧的字符串格式到新的对象格式
+        let migratedTags: Tag[] = currentState.tags;
+        if (Array.isArray(persisted.tags)) {
+          // 检查是否是旧的 string[] 格式
+          if (persisted.tags.length > 0 && typeof persisted.tags[0] === "string") {
+            // 迁移旧格式：string[] -> Tag[]
+            migratedTags = (persisted.tags as unknown as string[]).map((tagName) => {
+              // 尝试从默认标签中获取颜色
+              const defaultTag = defaultDishTags.find((t) => t.name === tagName);
+              return {
+                name: tagName,
+                color: defaultTag?.color ?? "#6b7280",
+              };
+            });
+          } else {
+            // 新格式，直接使用
+            migratedTags = persisted.tags as Tag[];
+          }
+        }
+
+        // 确保 ingredients 是数组格式
+        const migratedIngredients = Array.isArray(persisted.ingredients)
+          ? persisted.ingredients
+          : currentState.ingredients;
+
+        return {
+          ...currentState,
+          weeklyMenu: migratedMenu,
+          dishes: migratedDishes,
+          tags: migratedTags,
+          ingredients: migratedIngredients,
+        };
+      },
     }
   )
 );

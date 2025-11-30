@@ -1,14 +1,14 @@
-import { Dish } from "@/types/menu";
+import { Dish, Tag } from "@/types/menu";
 
-export const defaultDishTags = [
-  "大荤",
-  "小荤",
-  "蔬菜",
-  "汤",
-  "主食",
-  "点心",
-  "海鲜",
-  "素菜",
+export const defaultDishTags: Tag[] = [
+  { name: "大荤", color: "#ef4444" },      // 红色
+  { name: "小荤", color: "#f97316" },      // 橙色
+  { name: "蔬菜", color: "#22c55e" },      // 绿色
+  { name: "汤", color: "#3b82f6" },        // 蓝色
+  { name: "主食", color: "#a855f7" },      // 紫色
+  { name: "点心", color: "#ec4899" },      // 粉色
+  { name: "海鲜", color: "#06b6d4" },      // 青色
+  { name: "素菜", color: "#84cc16" },      // 黄绿色
 ];
 
 const createDish = (name: string, tags: string[]): Dish => ({

@@ -1,3 +1,8 @@
+export interface Tag {
+  name: string;
+  color: string;
+}
+
 export interface Dish {
   name: string;
   tags: string[];

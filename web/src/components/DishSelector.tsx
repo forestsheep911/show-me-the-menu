@@ -86,24 +86,27 @@ export function DishSelector({ entryTags, currentDish, onSelect, trigger }: Dish
             />
             <div className="flex flex-wrap gap-2">
               {availableTags.map((tag) => {
-                const isActive = activeTags.includes(tag);
+                const tagName = typeof tag === "string" ? tag : tag.name;
+                const tagColor = typeof tag === "string" ? "#6b7280" : tag.color;
+                const isActive = activeTags.includes(tagName);
                 return (
                   <button
-                    key={tag}
+                    key={tagName}
                     onClick={() => {
                       const updated = isActive
-                        ? activeTags.filter((t) => t !== tag)
-                        : [...activeTags, tag];
+                        ? activeTags.filter((t) => t !== tagName)
+                        : [...activeTags, tagName];
                       setActiveTags(updated);
                     }}
                     className={cn(
                       "px-3 py-1 text-xs rounded-full border transition-colors",
                       isActive
-                        ? "bg-[#ff7043]/10 border-[#ff7043]/40 text-[#f4511e]"
+                        ? "border-transparent text-white"
                         : "border-gray-200 text-gray-500 hover:border-gray-300"
                     )}
+                    style={isActive ? { backgroundColor: tagColor } : undefined}
                   >
-                    {tag}
+                    {tagName}
                   </button>
                 );
               })}

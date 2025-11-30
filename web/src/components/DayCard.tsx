@@ -18,6 +18,7 @@ export function DayCard({ menu, index, className }: DayCardProps) {
   const addMenuEntry = useMenuStore((state) => state.addMenuEntry);
   const removeMenuEntry = useMenuStore((state) => state.removeMenuEntry);
   const dishes = useMenuStore((state) => state.dishes);
+  const tags = useMenuStore((state) => state.tags);
 
   // dnd-kit hook for sortable items
   const {
@@ -58,8 +59,9 @@ export function DayCard({ menu, index, className }: DayCardProps) {
       
       <div className="p-4 cursor-default flex-1 flex flex-col gap-4" onPointerDown={(e) => e.stopPropagation()}> 
         {/* Stop propagation so clicking inside doesn't trigger drag */}
-        {menu.entries.map((entry) => {
-          const dish = dishes.find((d) => d.name === entry.dishName);
+        {(menu.entries ?? []).map((entry) => {
+          const dishList = Array.isArray(dishes) ? dishes : [];
+          const dish = dishList.find((d) => d.name === entry.dishName);
           const dishTags = dish?.tags ?? [];
 
           return (
@@ -68,32 +70,41 @@ export function DayCard({ menu, index, className }: DayCardProps) {
               className="rounded-xl border border-gray-100 p-3 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.02)] bg-white/70"
             >
               <div className="flex items-start justify-between gap-3 mb-2">
-                <div className="flex flex-wrap gap-1">
-                  {dishTags.length > 0 ? (
-                    dishTags.map((tag) => (
-                      <span key={tag} className="px-2 py-0.5 text-xs rounded-full bg-gray-100 text-gray-600">
-                        {tag}
-                      </span>
-                    ))
-                  ) : (
-                    <span className="text-xs text-gray-400">
-                      {entry.dishName ? "该菜暂未设置标签" : "等待选择菜品"}
-                    </span>
-                  )}
-                </div>
+                <DishSelector
+                  entryTags={entry.tags}
+                  currentDish={entry.dishName || "点击选择菜品"}
+                  onSelect={(newDish) => updateEntryDish(index, entry.id, newDish)}
+                />
                 <button
                   onClick={() => removeMenuEntry(index, entry.id)}
-                  className="text-gray-400 hover:text-red-500 transition-colors"
+                  className="text-gray-400 hover:text-red-500 transition-colors shrink-0"
                   aria-label="删除菜品"
                 >
                   <Trash2 className="size-4" />
                 </button>
               </div>
-              <DishSelector
-                entryTags={entry.tags}
-                currentDish={entry.dishName || "点击选择菜品"}
-                onSelect={(newDish) => updateEntryDish(index, entry.id, newDish)}
-              />
+              <div className="flex flex-wrap gap-1">
+                {dishTags.length > 0 ? (
+                  dishTags.map((tagName) => {
+                    const tagList = Array.isArray(tags) ? tags : [];
+                    const tagInfo = tagList.find((t) => t.name === tagName);
+                    const tagColor = tagInfo?.color ?? "#6b7280";
+                    return (
+                      <span
+                        key={tagName}
+                        className="px-2 py-0.5 text-xs rounded-full text-white"
+                        style={{ backgroundColor: tagColor }}
+                      >
+                        {tagName}
+                      </span>
+                    );
+                  })
+                ) : (
+                  <span className="text-xs text-gray-400">
+                    {entry.dishName ? "该菜暂未设置标签" : "等待选择菜品"}
+                  </span>
+                )}
+              </div>
             </div>
           );
         })}
