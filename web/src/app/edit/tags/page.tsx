@@ -6,6 +6,7 @@ import { useMenuStore } from "@/store/menuStore";
 import { Button } from "@/components/ui/button";
 import { FormEvent, useState, useCallback } from "react";
 import { HexColorPicker, HexColorInput } from "react-colorful";
+import { Dish } from "@/types/menu";
 
 export default function TagsManagePage() {
   const { dishes, tags, addTag, removeTag, updateTag } = useMenuStore();
@@ -62,7 +63,7 @@ export default function TagsManagePage() {
 
   // 获取选中标签的使用次数
   const getTagUsageCount = (tagName: string) => {
-    return dishes.filter((dish) => dish.tags.includes(tagName)).length;
+    return dishes.filter((dish: Dish) => dish.tags.includes(tagName)).length;
   };
 
   return (

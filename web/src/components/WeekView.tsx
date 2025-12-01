@@ -6,6 +6,7 @@ import { DndContext, DragEndEvent, closestCenter, PointerSensor, useSensor, useS
 import { SortableContext, horizontalListSortingStrategy } from "@dnd-kit/sortable";
 import { Button } from "./ui/button";
 import { Shuffle } from "lucide-react";
+import { DayMenu, WeeklyMenu } from "@/types/menu";
 
 export function WeekView() {
   const { weeklyMenu, setWeeklyMenu, generateNewMenu } = useMenuStore();
@@ -23,8 +24,8 @@ export function WeekView() {
     const { active, over } = event;
     
     if (over && active.id !== over.id) {
-      const oldIndex = weeklyMenu.findIndex((item) => item.day === active.id);
-      const newIndex = weeklyMenu.findIndex((item) => item.day === over.id);
+      const oldIndex = weeklyMenu.findIndex((item: DayMenu) => item.day === active.id);
+      const newIndex = weeklyMenu.findIndex((item: DayMenu) => item.day === over.id);
       
       // 注意：这里我们移动的是整个 DayMenu 对象，也就是交换了两天的菜单
       // 如果只想交换“内容”而保持“周几”不变，需要单独处理逻辑
@@ -75,11 +76,11 @@ export function WeekView() {
             onDragEnd={handleDragEnd}
         >
             <SortableContext 
-                items={weeklyMenu.map(d => d.day)} 
+                items={weeklyMenu.map((d: DayMenu) => d.day)} 
                 strategy={horizontalListSortingStrategy}
             >
                 <div className="grid grid-cols-1 md:grid-cols-5 gap-4 w-full px-4 h-full">
-                    {weeklyMenu.map((dayMenu, index) => (
+                    {weeklyMenu.map((dayMenu: DayMenu, index: number) => (
                         <DayCard 
                             key={dayMenu.day} 
                             menu={dayMenu} 

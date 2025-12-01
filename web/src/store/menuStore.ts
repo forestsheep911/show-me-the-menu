@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
-import { WeeklyMenu, MenuEntry, Dish, Tag } from "@/types/menu";
+import { WeeklyMenu, MenuEntry, Dish, Tag, Ingredient, IngredientColorName } from "@/types/menu";
 import { initialWeeklyMenu } from "@/data/initialMenu";
 import { defaultDishes, defaultDishTags } from "@/data/dishes";
 import { initialIngredients } from "@/data/ingredients";
@@ -26,7 +26,7 @@ interface MenuState {
   weeklyMenu: WeeklyMenu;
   dishes: Dish[];
   tags: Tag[];
-  ingredients: string[];
+  ingredients: Ingredient[];
 
   setWeeklyMenu: (menu: WeeklyMenu) => void;
   generateNewMenu: () => void;
@@ -34,7 +34,7 @@ interface MenuState {
   addMenuEntry: (dayIndex: number, tags?: string[]) => void;
   removeMenuEntry: (dayIndex: number, entryId: string) => void;
 
-  addDish: (dishName: string, tags: string[]) => void;
+  addDish: (dishName: string, tags?: string[], mainIngredients?: string[], subIngredients?: string[], steps?: string) => void;
   removeDish: (dishName: string) => void;
   updateDish: (oldName: string, updates: Partial<Dish>) => void;
 
@@ -42,11 +42,13 @@ interface MenuState {
   removeTag: (tagName: string) => void;
   updateTag: (tagName: string, updates: Partial<Tag>) => void;
 
-  addIngredient: (name: string) => void;
+  addIngredient: (name: string, color?: IngredientColorName) => void;
   removeIngredient: (name: string) => void;
-  updateIngredient: (oldName: string, newName: string) => void;
+  updateIngredient: (oldName: string, updates: Partial<Ingredient>) => void;
+  reorderIngredients: (ingredients: Ingredient[]) => void;
 
   getTagColor: (tagName: string) => string;
+  getIngredientColor: (name: string) => IngredientColorName;
 }
 
 export const useMenuStore = create<MenuState>()(
@@ -110,13 +112,19 @@ export const useMenuStore = create<MenuState>()(
           return { weeklyMenu: newMenu };
         }),
 
-      addDish: (dishName, tags) =>
+      addDish: (dishName, tags = [], mainIngredients = [], subIngredients = [], steps = "") =>
         set((state) => {
           const trimmed = dishName.trim();
           if (!trimmed) return state;
           if (state.dishes.some((dish) => dish.name === trimmed)) return state;
           return {
-            dishes: [...state.dishes, { name: trimmed, tags: tags.length ? tags : [] }],
+            dishes: [...state.dishes, { 
+              name: trimmed, 
+              tags, 
+              mainIngredients, 
+              subIngredients,
+              steps,
+            }],
           };
         }),
 
@@ -145,7 +153,6 @@ export const useMenuStore = create<MenuState>()(
                   ...dish,
                   ...updates,
                   name: trimmedName ?? dish.name,
-                  tags: updates.tags ?? dish.tags,
                 }
               : dish
           );
@@ -192,7 +199,6 @@ export const useMenuStore = create<MenuState>()(
       updateTag: (tagName, updates) =>
         set((state) => {
           const trimmedName = updates.name?.trim();
-          // 如果要改名，检查新名字是否已存在
           if (trimmedName && state.tags.some((t) => t.name === trimmedName && t.name !== tagName)) {
             return state;
           }
@@ -203,7 +209,6 @@ export const useMenuStore = create<MenuState>()(
               : t
           );
 
-          // 如果标签名改了，需要更新菜品和菜单中的引用
           let updatedDishes = state.dishes;
           let updatedMenu = state.weeklyMenu;
 
@@ -225,31 +230,62 @@ export const useMenuStore = create<MenuState>()(
         }),
 
       getTagColor: (tagName) => {
-        const state = useMenuStore.getState();
-        const tag = state.tags.find((t) => t.name === tagName);
-        return tag?.color ?? "#6b7280";
+        // This will be resolved at runtime after store is created
+        return "#6b7280";
       },
 
-      addIngredient: (name) =>
+      addIngredient: (name, color = "default") =>
         set((state) => {
           const trimmedName = name.trim();
-          if (!trimmedName || state.ingredients.includes(trimmedName)) return state;
-          return { ingredients: [...state.ingredients, trimmedName] };
+          if (!trimmedName || state.ingredients.some((i) => i.name === trimmedName)) return state;
+          return { ingredients: [...state.ingredients, { name: trimmedName, color }] };
         }),
 
       removeIngredient: (name) =>
-        set((state) => ({
-          ingredients: state.ingredients.filter((i) => i !== name),
-        })),
-
-      updateIngredient: (oldName, newName) =>
         set((state) => {
-          const trimmedNewName = newName.trim();
-          if (!trimmedNewName) return state;
-          return {
-            ingredients: state.ingredients.map((i) => (i === oldName ? trimmedNewName : i)),
-          };
+          const updatedIngredients = state.ingredients.filter((i) => i.name !== name);
+          // 同时从所有菜品中移除该食材
+          const updatedDishes = state.dishes.map((dish) => ({
+            ...dish,
+            mainIngredients: dish.mainIngredients.filter((i) => i !== name),
+            subIngredients: dish.subIngredients.filter((i) => i !== name),
+          }));
+          return { ingredients: updatedIngredients, dishes: updatedDishes };
         }),
+
+      updateIngredient: (oldName, updates) =>
+        set((state) => {
+          const trimmedName = updates.name?.trim();
+          if (trimmedName && state.ingredients.some((i) => i.name === trimmedName && i.name !== oldName)) {
+            return state;
+          }
+
+          const updatedIngredients = state.ingredients.map((i) =>
+            i.name === oldName
+              ? { ...i, ...updates, name: trimmedName ?? i.name }
+              : i
+          );
+
+          // 如果食材名改了，更新所有菜品中的引用
+          let updatedDishes = state.dishes;
+          if (trimmedName && trimmedName !== oldName) {
+            updatedDishes = state.dishes.map((dish) => ({
+              ...dish,
+              mainIngredients: dish.mainIngredients.map((i) => (i === oldName ? trimmedName : i)),
+              subIngredients: dish.subIngredients.map((i) => (i === oldName ? trimmedName : i)),
+            }));
+          }
+
+          return { ingredients: updatedIngredients, dishes: updatedDishes };
+        }),
+
+      reorderIngredients: (ingredients) =>
+        set({ ingredients }),
+
+      getIngredientColor: (name) => {
+        // This will be resolved at runtime after store is created
+        return "default" as IngredientColorName;
+      },
     }),
     {
       name: "menu-storage",
@@ -262,31 +298,38 @@ export const useMenuStore = create<MenuState>()(
       }),
       // 数据迁移：确保从 localStorage 恢复的旧数据结构兼容
       merge: (persistedState, currentState) => {
-        const persisted = persistedState as Partial<MenuState> | undefined;
+        const persisted = persistedState as Record<string, unknown> | undefined;
         if (!persisted) return currentState;
 
         // 确保 weeklyMenu 中每个 day 都有 entries 数组
-        const migratedMenu = Array.isArray(persisted.weeklyMenu)
-          ? persisted.weeklyMenu.map((day, index) => ({
+        const persistedMenu = persisted.weeklyMenu as WeeklyMenu | undefined;
+        const migratedMenu = Array.isArray(persistedMenu)
+          ? persistedMenu.map((day, index) => ({
               ...initialWeeklyMenu[index],
               ...day,
               entries: Array.isArray(day?.entries) ? day.entries : initialWeeklyMenu[index].entries,
             }))
           : currentState.weeklyMenu;
 
-        // 确保 dishes 是数组格式（旧版本可能是对象格式）
-        const migratedDishes = Array.isArray(persisted.dishes) 
-          ? persisted.dishes 
+        // 确保 dishes 是数组格式，并迁移旧数据
+        const persistedDishes = persisted.dishes as Array<Record<string, unknown>> | undefined;
+        const migratedDishes: Dish[] = Array.isArray(persistedDishes)
+          ? persistedDishes.map((dish) => ({
+              name: dish.name as string,
+              tags: (dish.tags as string[]) ?? [],
+              // 旧版本的 ingredients 字段迁移到 mainIngredients
+              mainIngredients: (dish.mainIngredients as string[]) ?? (dish.ingredients as string[]) ?? [],
+              subIngredients: (dish.subIngredients as string[]) ?? [],
+              steps: (dish.steps as string) ?? "",
+            }))
           : currentState.dishes;
 
         // 确保 tags 是数组格式，并迁移旧的字符串格式到新的对象格式
         let migratedTags: Tag[] = currentState.tags;
-        if (Array.isArray(persisted.tags)) {
-          // 检查是否是旧的 string[] 格式
-          if (persisted.tags.length > 0 && typeof persisted.tags[0] === "string") {
-            // 迁移旧格式：string[] -> Tag[]
-            migratedTags = (persisted.tags as unknown as string[]).map((tagName) => {
-              // 尝试从默认标签中获取颜色
+        const persistedTags = persisted.tags as Tag[] | string[] | undefined;
+        if (Array.isArray(persistedTags)) {
+          if (persistedTags.length > 0 && typeof persistedTags[0] === "string") {
+            migratedTags = (persistedTags as string[]).map((tagName) => {
               const defaultTag = defaultDishTags.find((t) => t.name === tagName);
               return {
                 name: tagName,
@@ -294,15 +337,27 @@ export const useMenuStore = create<MenuState>()(
               };
             });
           } else {
-            // 新格式，直接使用
-            migratedTags = persisted.tags as Tag[];
+            migratedTags = persistedTags as Tag[];
           }
         }
 
-        // 确保 ingredients 是数组格式
-        const migratedIngredients = Array.isArray(persisted.ingredients)
-          ? persisted.ingredients
-          : currentState.ingredients;
+        // 确保 ingredients 是 Ingredient[] 格式
+        let migratedIngredients: Ingredient[] = currentState.ingredients;
+        const persistedIngredients = persisted.ingredients as Ingredient[] | string[] | undefined;
+        if (Array.isArray(persistedIngredients)) {
+          if (persistedIngredients.length > 0 && typeof persistedIngredients[0] === "string") {
+            // 旧格式：string[] -> Ingredient[]
+            migratedIngredients = (persistedIngredients as string[]).map((name) => {
+              const defaultIng = initialIngredients.find((i) => i.name === name);
+              return {
+                name,
+                color: defaultIng?.color ?? "default",
+              };
+            });
+          } else {
+            migratedIngredients = persistedIngredients as Ingredient[];
+          }
+        }
 
         return {
           ...currentState,

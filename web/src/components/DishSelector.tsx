@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { matchesSearch } from "@/lib/search";
 import { RefreshCw } from "lucide-react";
 import { useMemo, useState } from "react";
+import { Dish, Tag } from "@/types/menu";
 
 interface DishSelectorProps {
   entryTags: string[];
@@ -19,19 +20,19 @@ export function DishSelector({ entryTags, currentDish, onSelect, trigger }: Dish
   const [searchQuery, setSearchQuery] = useState("");
   const [newDish, setNewDish] = useState("");
   const [activeTags, setActiveTags] = useState<string[]>(entryTags);
-  const dishes = useMenuStore((state) => state.dishes);
-  const availableTags = useMenuStore((state) => state.tags);
-  const addDish = useMenuStore((state) => state.addDish);
+  const dishes = useMenuStore((state: { dishes: Dish[] }) => state.dishes);
+  const availableTags = useMenuStore((state: { tags: Tag[] }) => state.tags);
+  const addDish = useMenuStore((state: { addDish: (name: string, tags?: string[], mainIngredients?: string[], subIngredients?: string[], steps?: string) => void }) => state.addDish);
 
   const normalizedQuery = searchQuery.trim().toLowerCase();
   const filteredDishes = useMemo(() => {
     const byTag =
       activeTags.length === 0
         ? dishes
-        : dishes.filter((dish) => activeTags.every((tag) => dish.tags.includes(tag)));
+        : dishes.filter((dish: Dish) => activeTags.every((tag: string) => dish.tags.includes(tag)));
 
     if (!normalizedQuery) return byTag;
-    return byTag.filter((dish) => matchesSearch(dish.name, normalizedQuery));
+    return byTag.filter((dish: Dish) => matchesSearch(dish.name, normalizedQuery));
   }, [dishes, activeTags, normalizedQuery]);
 
   const handleSelect = (dish: string) => {
@@ -85,16 +86,16 @@ export function DishSelector({ entryTags, currentDish, onSelect, trigger }: Dish
               className="w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm focus:border-[#ff7043] focus:outline-none focus:ring-2 focus:ring-[#ffcc80]/50"
             />
             <div className="flex flex-wrap gap-2">
-              {availableTags.map((tag) => {
-                const tagName = typeof tag === "string" ? tag : tag.name;
-                const tagColor = typeof tag === "string" ? "#6b7280" : tag.color;
+              {availableTags.map((tag: Tag) => {
+                const tagName = tag.name;
+                const tagColor = tag.color;
                 const isActive = activeTags.includes(tagName);
                 return (
                   <button
                     key={tagName}
                     onClick={() => {
                       const updated = isActive
-                        ? activeTags.filter((t) => t !== tagName)
+                        ? activeTags.filter((t: string) => t !== tagName)
                         : [...activeTags, tagName];
                       setActiveTags(updated);
                     }}
@@ -138,7 +139,7 @@ export function DishSelector({ entryTags, currentDish, onSelect, trigger }: Dish
             >
               清空菜品
             </Button>
-            {filteredDishes.map((dish) => (
+            {filteredDishes.map((dish: Dish) => (
               <Button
                 key={dish.name}
                 variant={currentDish === dish.name ? "secondary" : "ghost"}

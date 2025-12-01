@@ -1,4 +1,4 @@
-import { DayMenu } from "@/types/menu";
+import { DayMenu, Dish, Tag } from "@/types/menu";
 import { cn } from "@/lib/utils";
 import { useMenuStore } from "@/store/menuStore";
 import { DishSelector } from "./DishSelector";
@@ -14,11 +14,11 @@ interface DayCardProps {
 }
 
 export function DayCard({ menu, index, className }: DayCardProps) {
-  const updateEntryDish = useMenuStore((state) => state.updateEntryDish);
-  const addMenuEntry = useMenuStore((state) => state.addMenuEntry);
-  const removeMenuEntry = useMenuStore((state) => state.removeMenuEntry);
-  const dishes = useMenuStore((state) => state.dishes);
-  const tags = useMenuStore((state) => state.tags);
+  const updateEntryDish = useMenuStore((state: { updateEntryDish: (dayIndex: number, entryId: string, dishName: string) => void }) => state.updateEntryDish);
+  const addMenuEntry = useMenuStore((state: { addMenuEntry: (dayIndex: number, tags?: string[]) => void }) => state.addMenuEntry);
+  const removeMenuEntry = useMenuStore((state: { removeMenuEntry: (dayIndex: number, entryId: string) => void }) => state.removeMenuEntry);
+  const dishes = useMenuStore((state: { dishes: Dish[] }) => state.dishes);
+  const tags = useMenuStore((state: { tags: Tag[] }) => state.tags);
 
   // dnd-kit hook for sortable items
   const {
@@ -85,9 +85,9 @@ export function DayCard({ menu, index, className }: DayCardProps) {
               </div>
               <div className="flex flex-wrap gap-1">
                 {dishTags.length > 0 ? (
-                  dishTags.map((tagName) => {
+                  dishTags.map((tagName: string) => {
                     const tagList = Array.isArray(tags) ? tags : [];
-                    const tagInfo = tagList.find((t) => t.name === tagName);
+                    const tagInfo = tagList.find((t: Tag) => t.name === tagName);
                     const tagColor = tagInfo?.color ?? "#6b7280";
                     return (
                       <span
