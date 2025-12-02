@@ -432,8 +432,17 @@ export function MultiSelect({
 }: MultiSelectProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [inputValue, setInputValue] = useState("");
+  const [dropdownPosition, setDropdownPosition] = useState<{
+    left: number;
+    width: number;
+    maxHeight: number;
+    openUp: boolean;
+    top?: number;
+    bottom?: number;
+  }>({ left: 0, width: 0, maxHeight: 256, openUp: false });
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -442,7 +451,7 @@ export function MultiSelect({
     })
   );
 
-  // Filter options based on input
+  // Filter options based on input (moved before useEffect that depends on it)
   const filteredOptions = options.filter((opt) =>
     opt.name.toLowerCase().includes(inputValue.toLowerCase())
   );
@@ -450,6 +459,96 @@ export function MultiSelect({
   // Check if can create new option
   const canCreate = inputValue.trim() && 
     !options.some((opt) => opt.name.toLowerCase() === inputValue.trim().toLowerCase());
+
+  // Update dropdown position when opening or scrolling
+  useEffect(() => {
+    if (!isOpen || !containerRef.current) return;
+
+    const updatePosition = () => {
+      if (!containerRef.current) return;
+      const rect = containerRef.current.getBoundingClientRect();
+      const gap = 4; // Gap between input and dropdown
+      const maxDropdownHeight = 256; // max-h-64 in Tailwind
+      const minVisibleHeight = 100; // Minimum height to consider the dropdown usable
+      
+      // Calculate available space above and below
+      const spaceBelow = window.innerHeight - rect.bottom - gap;
+      const spaceAbove = rect.top - gap;
+      
+      // Get actual dropdown height if available, or estimate based on options count
+      const estimatedHeight = Math.min(
+        (filteredOptions.length + 2) * 32 + 50, // Rough estimate: 32px per option + header
+        maxDropdownHeight
+      );
+      const actualDropdownHeight = dropdownRef.current?.scrollHeight || estimatedHeight;
+      const neededHeight = Math.min(actualDropdownHeight, maxDropdownHeight);
+      
+      // Decide direction: prefer below, but open above if not enough space below
+      // and there's more space above
+      let openUp = false;
+      let maxHeight: number;
+      
+      if (spaceBelow >= neededHeight) {
+        // Enough space below - open downward
+        openUp = false;
+        maxHeight = Math.min(spaceBelow, maxDropdownHeight);
+      } else if (spaceAbove >= neededHeight) {
+        // Not enough below but enough above - open upward
+        openUp = true;
+        maxHeight = Math.min(spaceAbove, maxDropdownHeight);
+      } else if (spaceAbove > spaceBelow) {
+        // Neither has enough, but above has more space
+        openUp = true;
+        maxHeight = Math.max(spaceAbove, minVisibleHeight);
+      } else {
+        // Below has more or equal space
+        openUp = false;
+        maxHeight = Math.max(spaceBelow, minVisibleHeight);
+      }
+      
+      if (openUp) {
+        // Position from bottom: dropdown's bottom edge aligns with input's top edge
+        setDropdownPosition({
+          bottom: window.innerHeight - rect.top + gap,
+          left: rect.left,
+          width: rect.width,
+          maxHeight,
+          openUp,
+        });
+      } else {
+        // Position from top: dropdown's top edge aligns with input's bottom edge
+        setDropdownPosition({
+          top: rect.bottom + gap,
+          left: rect.left,
+          width: rect.width,
+          maxHeight,
+          openUp,
+        });
+      }
+    };
+
+    updatePosition();
+    
+    // Recalculate after content renders to get accurate height
+    const timeoutId = setTimeout(updatePosition, 50);
+    
+    // Also use ResizeObserver to detect dropdown content changes
+    let resizeObserver: ResizeObserver | null = null;
+    if (dropdownRef.current) {
+      resizeObserver = new ResizeObserver(updatePosition);
+      resizeObserver.observe(dropdownRef.current);
+    }
+
+    // Update position on scroll/resize
+    window.addEventListener("scroll", updatePosition, true);
+    window.addEventListener("resize", updatePosition);
+    return () => {
+      clearTimeout(timeoutId);
+      resizeObserver?.disconnect();
+      window.removeEventListener("scroll", updatePosition, true);
+      window.removeEventListener("resize", updatePosition);
+    };
+  }, [isOpen, filteredOptions.length]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -557,15 +656,37 @@ export function MultiSelect({
         />
       </div>
 
-      {/* Dropdown */}
-      {isOpen && (
-        <div className="absolute top-full left-0 right-0 mt-1 bg-white rounded-lg shadow-lg border z-50 max-h-64 overflow-y-auto">
+      {/* Dropdown - rendered via Portal to avoid overflow clipping */}
+      {isOpen && createPortal(
+        <>
+          {/* Backdrop to close dropdown when clicking outside */}
+          <div
+            className="fixed inset-0 z-[9990]"
+            onMouseDown={() => setIsOpen(false)}
+          />
+          <div 
+            ref={dropdownRef}
+            className="fixed bg-white rounded-lg shadow-lg border z-[9991] overflow-y-auto"
+            style={{ 
+              top: dropdownPosition.openUp ? 'auto' : dropdownPosition.top,
+              bottom: dropdownPosition.openUp ? dropdownPosition.bottom : 'auto',
+              left: dropdownPosition.left, 
+              width: dropdownPosition.width,
+              maxHeight: dropdownPosition.maxHeight,
+            }}
+            onMouseDown={(e) => e.stopPropagation()}
+          >
+          {/* Hint */}
+          <div className="px-3 py-1.5 text-xs text-gray-400 border-b">
+            选择一个选项或创建新选项
+          </div>
+          
           {/* Create option */}
           {canCreate && (
             <button
               type="button"
               onClick={handleCreate}
-              className="w-full px-3 py-2 text-left text-sm hover:bg-gray-50 border-b flex items-center gap-2"
+              className="w-full px-3 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2 border-b"
             >
               <span className="text-gray-500">创建</span>
               <span
@@ -579,11 +700,6 @@ export function MultiSelect({
               </span>
             </button>
           )}
-
-          {/* Hint */}
-          <div className="px-3 py-1.5 text-xs text-gray-400 border-b">
-            选择一个选项或创建新选项
-          </div>
 
           {/* Options list with drag and drop */}
           <DndContext
@@ -615,7 +731,9 @@ export function MultiSelect({
               </div>
             </SortableContext>
           </DndContext>
-        </div>
+          </div>
+        </>,
+        document.body
       )}
     </div>
   );
