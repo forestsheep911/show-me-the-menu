@@ -4,7 +4,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { useMenuStore } from "@/store/menuStore";
 import { cn } from "@/lib/utils";
 import { matchesSearch } from "@/lib/search";
-import { RefreshCw } from "lucide-react";
+import { Plus, RefreshCw } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Dish, Tag } from "@/types/menu";
 
@@ -18,7 +18,6 @@ interface DishSelectorProps {
 export function DishSelector({ entryTags, currentDish, onSelect, trigger }: DishSelectorProps) {
   const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [newDish, setNewDish] = useState("");
   const [activeTags, setActiveTags] = useState<string[]>(entryTags);
   const dishes = useMenuStore((state: { dishes: Dish[] }) => state.dishes);
   const availableTags = useMenuStore((state: { tags: Tag[] }) => state.tags);
@@ -35,23 +34,33 @@ export function DishSelector({ entryTags, currentDish, onSelect, trigger }: Dish
     return byTag.filter((dish: Dish) => matchesSearch(dish.name, normalizedQuery));
   }, [dishes, activeTags, normalizedQuery]);
 
+  // 检查是否有精确匹配（菜品名称完全相同）
+  const trimmedQuery = searchQuery.trim();
+  const hasExactMatch = useMemo(() => {
+    if (!trimmedQuery) return true; // 空输入不显示创建
+    return dishes.some((dish: Dish) => dish.name === trimmedQuery);
+  }, [dishes, trimmedQuery]);
+
+  // 是否显示创建选项
+  const showCreateOption = trimmedQuery && !hasExactMatch;
+
   const handleSelect = (dish: string) => {
     onSelect(dish);
+    setSearchQuery("");
     setOpen(false);
   };
 
   const handleAddDish = () => {
-    const trimmed = newDish.trim();
-    if (!trimmed) return;
-    addDish(trimmed, activeTags.length ? activeTags : entryTags);
-    setNewDish("");
-    handleSelect(trimmed);
+    if (!trimmedQuery || hasExactMatch) return;
+    addDish(trimmedQuery, activeTags.length ? activeTags : entryTags);
+    handleSelect(trimmedQuery);
   };
 
   const handleDialogChange = (nextOpen: boolean) => {
     setOpen(nextOpen);
     if (nextOpen) {
       setActiveTags(entryTags);
+      setSearchQuery("");
     }
   };
 
@@ -80,9 +89,15 @@ export function DishSelector({ entryTags, currentDish, onSelect, trigger }: Dish
           <div className="space-y-2">
             <input
               type="text"
-              placeholder="搜索菜品..."
+              placeholder="搜索菜品或输入新菜品名称..."
               value={searchQuery}
               onChange={(event) => setSearchQuery(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" && showCreateOption) {
+                  event.preventDefault();
+                  handleAddDish();
+                }
+              }}
               className="w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm focus:border-[#ff7043] focus:outline-none focus:ring-2 focus:ring-[#ffcc80]/50"
             />
             <div className="flex flex-wrap gap-2">
@@ -113,22 +128,23 @@ export function DishSelector({ entryTags, currentDish, onSelect, trigger }: Dish
               })}
               {availableTags.length === 0 && <span className="text-xs text-gray-400">暂无标签</span>}
             </div>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                placeholder="新菜品名称"
-                value={newDish}
-                onChange={(event) => setNewDish(event.target.value)}
-                className="flex-1 rounded-md border border-dashed border-gray-300 bg-white px-3 py-2 text-sm focus:border-[#ff7043] focus:outline-none focus:ring-2 focus:ring-[#ffcc80]/50"
-              />
-              <Button variant="secondary" onClick={handleAddDish} disabled={!newDish.trim()}>
-                + 新建菜品
-              </Button>
-            </div>
           </div>
         </div>
         <ScrollArea className="mt-4 h-[420px] w-full rounded-md border p-4">
           <div className="grid grid-cols-3 gap-3">
+            {/* 创建新菜品选项 - Notion 风格 */}
+            {showCreateOption && (
+              <button
+                onClick={handleAddDish}
+                className="col-span-3 flex items-center gap-2 px-4 py-3 rounded-lg border-2 border-dashed border-[#ff7043]/30 bg-[#ff7043]/5 hover:bg-[#ff7043]/10 hover:border-[#ff7043]/50 transition-all group"
+              >
+                <Plus className="w-4 h-4 text-[#ff7043]" />
+                <span className="text-sm text-gray-600">创建</span>
+                <span className="px-2 py-0.5 text-sm font-medium bg-[#ff7043] text-white rounded">
+                  {trimmedQuery}
+                </span>
+              </button>
+            )}
             <Button
               variant={currentDish === "" ? "secondary" : "ghost"}
               className={cn(
