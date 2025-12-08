@@ -5,6 +5,31 @@ import { initialWeeklyMenu } from "@/data/initialMenu";
 import { defaultDishes, defaultDishTags } from "@/data/dishes";
 import { initialIngredients } from "@/data/ingredients";
 
+// 柔和的卡片颜色调色板
+export const SOFT_CARD_COLORS = [
+  "#FF9A9E", // 柔和粉
+  "#A18CD1", // 柔和紫
+  "#FBC2EB", // 淡紫粉
+  "#84FAB0", // 清新绿
+  "#FFD1FF", // 亮粉
+  "#FFD89B", // 暖橙
+  "#A8E6CF", // 薄荷绿
+  "#88D8F5", // 天空蓝
+  "#DDD6F3", // 薰衣草
+  "#FAACA8", // 珊瑚粉
+  "#B5EAD7", // 淡绿
+  "#E2B0FF", // 浅紫
+  "#FFB7B2", // 蜜桃粉
+  "#B2F7EF", // 青蓝
+  "#F0E68C", // 柠檬黄
+];
+
+// 随机打乱数组并返回前n个不重复的元素
+const shuffleAndPick = <T,>(arr: T[], n: number): T[] => {
+  const shuffled = [...arr].sort(() => Math.random() - 0.5);
+  return shuffled.slice(0, n);
+};
+
 const createEntryId = () => {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
     return crypto.randomUUID();
@@ -27,12 +52,15 @@ interface MenuState {
   dishes: Dish[];
   tags: Tag[];
   ingredients: Ingredient[];
+  backgroundColor: string; // 主页背景色
 
   setWeeklyMenu: (menu: WeeklyMenu) => void;
   generateNewMenu: () => void;
   updateEntryDish: (dayIndex: number, entryId: string, dishName: string) => void;
   addMenuEntry: (dayIndex: number, tags?: string[]) => void;
   removeMenuEntry: (dayIndex: number, entryId: string) => void;
+  updateDayColor: (dayIndex: number, color: string) => void; // 更新单天卡片颜色
+  setBackgroundColor: (color: string) => void; // 设置背景色
 
   addDish: (dishName: string, tags?: string[], mainIngredients?: string[], subIngredients?: string[], steps?: string) => void;
   removeDish: (dishName: string) => void;
@@ -58,13 +86,18 @@ export const useMenuStore = create<MenuState>()(
       dishes: defaultDishes,
       tags: defaultDishTags,
       ingredients: initialIngredients,
+      backgroundColor: "#b2ebf2", // 默认背景色（青绿色点点）
 
       setWeeklyMenu: (menu) => set({ weeklyMenu: menu }),
 
       generateNewMenu: () =>
         set((state) => {
-          const newMenu: WeeklyMenu = state.weeklyMenu.map((day) => ({
+          // 随机选择5个不重复的颜色分配给每天
+          const randomColors = shuffleAndPick(SOFT_CARD_COLORS, 5);
+
+          const newMenu: WeeklyMenu = state.weeklyMenu.map((day, index) => ({
             ...day,
+            color: randomColors[index] ?? day.color, // 使用随机颜色
             entries: day.entries.map((entry) => {
               const candidates = filterDishesByTags(state.dishes, entry.tags);
               if (candidates.length === 0) return entry;
@@ -112,16 +145,28 @@ export const useMenuStore = create<MenuState>()(
           return { weeklyMenu: newMenu };
         }),
 
+      updateDayColor: (dayIndex, color) =>
+        set((state) => {
+          const newMenu = [...state.weeklyMenu];
+          newMenu[dayIndex] = {
+            ...newMenu[dayIndex],
+            color,
+          };
+          return { weeklyMenu: newMenu };
+        }),
+
+      setBackgroundColor: (color) => set({ backgroundColor: color }),
+
       addDish: (dishName, tags = [], mainIngredients = [], subIngredients = [], steps = "") =>
         set((state) => {
           const trimmed = dishName.trim();
           if (!trimmed) return state;
           if (state.dishes.some((dish) => dish.name === trimmed)) return state;
           return {
-            dishes: [...state.dishes, { 
-              name: trimmed, 
-              tags, 
-              mainIngredients, 
+            dishes: [...state.dishes, {
+              name: trimmed,
+              tags,
+              mainIngredients,
               subIngredients,
               steps,
             }],
@@ -150,20 +195,20 @@ export const useMenuStore = create<MenuState>()(
           const updatedDishes = state.dishes.map((dish) =>
             dish.name === oldName
               ? {
-                  ...dish,
-                  ...updates,
-                  name: trimmedName ?? dish.name,
-                }
+                ...dish,
+                ...updates,
+                name: trimmedName ?? dish.name,
+              }
               : dish
           );
 
           const updatedMenu = trimmedName
             ? state.weeklyMenu.map((day) => ({
-                ...day,
-                entries: day.entries.map((entry) =>
-                  entry.dishName === oldName ? { ...entry, dishName: trimmedName } : entry
-                ),
-              }))
+              ...day,
+              entries: day.entries.map((entry) =>
+                entry.dishName === oldName ? { ...entry, dishName: trimmedName } : entry
+              ),
+            }))
             : state.weeklyMenu;
 
           return {
@@ -295,6 +340,7 @@ export const useMenuStore = create<MenuState>()(
         weeklyMenu: state.weeklyMenu,
         ingredients: state.ingredients,
         tags: state.tags,
+        backgroundColor: state.backgroundColor,
       }),
       // 数据迁移：确保从 localStorage 恢复的旧数据结构兼容
       merge: (persistedState, currentState) => {
@@ -305,23 +351,23 @@ export const useMenuStore = create<MenuState>()(
         const persistedMenu = persisted.weeklyMenu as WeeklyMenu | undefined;
         const migratedMenu = Array.isArray(persistedMenu)
           ? persistedMenu.map((day, index) => ({
-              ...initialWeeklyMenu[index],
-              ...day,
-              entries: Array.isArray(day?.entries) ? day.entries : initialWeeklyMenu[index].entries,
-            }))
+            ...initialWeeklyMenu[index],
+            ...day,
+            entries: Array.isArray(day?.entries) ? day.entries : initialWeeklyMenu[index].entries,
+          }))
           : currentState.weeklyMenu;
 
         // 确保 dishes 是数组格式，并迁移旧数据
         const persistedDishes = persisted.dishes as Array<Record<string, unknown>> | undefined;
         const migratedDishes: Dish[] = Array.isArray(persistedDishes)
           ? persistedDishes.map((dish) => ({
-              name: dish.name as string,
-              tags: (dish.tags as string[]) ?? [],
-              // 旧版本的 ingredients 字段迁移到 mainIngredients
-              mainIngredients: (dish.mainIngredients as string[]) ?? (dish.ingredients as string[]) ?? [],
-              subIngredients: (dish.subIngredients as string[]) ?? [],
-              steps: (dish.steps as string) ?? "",
-            }))
+            name: dish.name as string,
+            tags: (dish.tags as string[]) ?? [],
+            // 旧版本的 ingredients 字段迁移到 mainIngredients
+            mainIngredients: (dish.mainIngredients as string[]) ?? (dish.ingredients as string[]) ?? [],
+            subIngredients: (dish.subIngredients as string[]) ?? [],
+            steps: (dish.steps as string) ?? "",
+          }))
           : currentState.dishes;
 
         // 确保 tags 是数组格式，并迁移旧的字符串格式到新的对象格式
@@ -359,12 +405,19 @@ export const useMenuStore = create<MenuState>()(
           }
         }
 
+        // 迁移 backgroundColor
+        const migratedBackgroundColor =
+          typeof persisted.backgroundColor === "string"
+            ? persisted.backgroundColor
+            : currentState.backgroundColor;
+
         return {
           ...currentState,
           weeklyMenu: migratedMenu,
           dishes: migratedDishes,
           tags: migratedTags,
           ingredients: migratedIngredients,
+          backgroundColor: migratedBackgroundColor,
         };
       },
     }
