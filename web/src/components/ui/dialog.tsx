@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import * as ReactDOM from "react-dom"
 import * as DialogPrimitive from "@radix-ui/react-dialog"
 import { XIcon } from "lucide-react"
 
@@ -9,7 +10,7 @@ import { cn } from "@/lib/utils"
 function Dialog({
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Root>) {
-  return <DialogPrimitive.Root data-slot="dialog" {...props} />
+  return <DialogPrimitive.Root data-slot="dialog" modal={false} {...props} />
 }
 
 function DialogTrigger({
@@ -32,15 +33,17 @@ function DialogClose({
 
 function DialogOverlay({
   className,
+  onClick,
   ...props
-}: React.ComponentProps<typeof DialogPrimitive.Overlay>) {
+}: React.ComponentProps<"div">) {
   return (
-    <DialogPrimitive.Overlay
+    <div
       data-slot="dialog-overlay"
       className={cn(
-        "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 fixed inset-0 z-50 bg-black/50",
+        "fixed inset-0 z-[49] bg-black/50",
         className
       )}
+      onClick={onClick}
       {...props}
     />
   )
@@ -54,9 +57,26 @@ function DialogContent({
 }: React.ComponentProps<typeof DialogPrimitive.Content> & {
   showCloseButton?: boolean
 }) {
+  const [mounted, setMounted] = React.useState(false)
+  const closeRef = React.useRef<HTMLButtonElement>(null)
+
+  React.useEffect(() => {
+    setMounted(true)
+    return () => setMounted(false)
+  }, [])
+
+  // 点击遮罩层关闭对话框
+  const handleOverlayClick = React.useCallback(() => {
+    closeRef.current?.click()
+  }, [])
+
   return (
     <DialogPortal data-slot="dialog-portal">
-      <DialogOverlay />
+      {/* 使用 createPortal 确保遮罩层渲染到 body */}
+      {mounted && ReactDOM.createPortal(
+        <DialogOverlay data-state="open" onClick={handleOverlayClick} />,
+        document.body
+      )}
       <DialogPrimitive.Content
         data-slot="dialog-content"
         className={cn(
@@ -68,6 +88,7 @@ function DialogContent({
         {children}
         {showCloseButton && (
           <DialogPrimitive.Close
+            ref={closeRef}
             data-slot="dialog-close"
             className="ring-offset-background focus:ring-ring data-[state=open]:bg-accent data-[state=open]:text-muted-foreground absolute top-4 right-4 rounded-xs opacity-70 transition-opacity hover:opacity-100 focus:ring-2 focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4"
           >

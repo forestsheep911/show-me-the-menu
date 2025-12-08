@@ -9,7 +9,24 @@
 
 html {
   scrollbar-gutter: stable;
+  overflow-y: scroll !important;
   /* 为滚动条预留空间，防止对话框打开时的布局偏移 */
+}
+
+/* 覆盖 Radix Dialog 在 html 上添加的滚动锁定样式 */
+html[data-scroll-locked] {
+  overflow: scroll !important;
+  margin-right: 0 !important;
+  padding-right: 0 !important;
+}
+
+/* 更强的选择器来覆盖内联样式 */
+html[data-scroll-locked="1"],
+html[data-scroll-locked="true"],
+html[style*="overflow"] {
+  overflow: scroll !important;
+  margin-right: 0 !important;
+  padding-right: 0 !important;
 }
 
 body {
@@ -29,6 +46,17 @@ body {
   width: auto !important;
   height: auto !important;
   margin: 0 !important;
+  margin-right: 0 !important;
+  padding-right: 0 !important;
+}
+
+/* 覆盖 Radix Dialog 在 body 上添加的滚动锁定样式 */
+body[data-scroll-locked] {
+  overflow: visible !important;
+  position: static !important;
+  margin-right: 0 !important;
+  padding-right: 0 !important;
+  width: auto !important;
 }
 
 @theme inline {
