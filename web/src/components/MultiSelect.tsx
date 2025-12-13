@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useLayoutEffect } from "react";
 import { createPortal } from "react-dom";
 import { X, MoreHorizontal, GripVertical, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -74,7 +74,7 @@ function OptionMenu({
   const [position, setPosition] = useState({ top: 0, left: 0 });
 
   // Calculate position after mount to get actual menu dimensions
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!menuRef.current) return;
 
     const menuRect = menuRef.current.getBoundingClientRect();
@@ -105,6 +105,7 @@ function OptionMenu({
       top = padding;
     }
 
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setPosition({ top, left });
   }, [anchorRect]);
 
@@ -112,10 +113,10 @@ function OptionMenu({
   useEffect(() => {
     const originalOverflow = document.body.style.overflow;
     const originalPaddingRight = document.body.style.paddingRight;
-    
+
     // Get scrollbar width to prevent layout shift
     const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
-    
+
     document.body.style.overflow = "hidden";
     if (scrollbarWidth > 0) {
       document.body.style.paddingRight = `${scrollbarWidth}px`;
@@ -135,8 +136,8 @@ function OptionMenu({
   return createPortal(
     <>
       {/* Backdrop to capture clicks and prevent scroll */}
-      <div 
-        className="fixed inset-0 z-[9998]" 
+      <div
+        className="fixed inset-0 z-[9998]"
         onMouseDown={(e) => {
           e.stopPropagation();
           onClose();
@@ -273,10 +274,7 @@ function SortableOptionItem({
     }
   }, [isEditing]);
 
-  // Reset edit value when option name changes
-  useEffect(() => {
-    setEditValue(option.name);
-  }, [option.name]);
+
 
   const handleSaveEdit = () => {
     const trimmed = editValue.trim();
@@ -448,7 +446,7 @@ export function MultiSelect({
   );
 
   // Check if can create new option
-  const canCreate = inputValue.trim() && 
+  const canCreate = inputValue.trim() &&
     !options.some((opt) => opt.name.toLowerCase() === inputValue.trim().toLowerCase());
 
   // Close dropdown when clicking outside
@@ -570,9 +568,9 @@ export function MultiSelect({
               <span className="text-gray-500">创建</span>
               <span
                 className="px-1.5 py-0.5 text-xs rounded-sm"
-                style={{ 
-                  backgroundColor: INGREDIENT_COLORS.default.bg, 
-                  color: INGREDIENT_COLORS.default.text 
+                style={{
+                  backgroundColor: INGREDIENT_COLORS.default.bg,
+                  color: INGREDIENT_COLORS.default.text
                 }}
               >
                 {inputValue.trim()}

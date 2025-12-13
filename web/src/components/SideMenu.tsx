@@ -2,22 +2,20 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { Settings, Shuffle, Menu, ChevronLeft, ChevronRight } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Settings, Shuffle, PanelLeftOpen, PanelLeftClose, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useMenuStore } from "@/store/menuStore";
+import { Button } from "@/components/ui/button";
 
 interface SideMenuProps {
     className?: string;
 }
 
 export function SideMenu({ className }: SideMenuProps) {
-    const [isOpen, setIsOpen] = useState(false);
+    const [isExpanded, setIsExpanded] = useState(false);
     const generateNewMenu = useMenuStore((state) => state.generateNewMenu);
 
-    // 键盘快捷键处理
     const handleKeyDown = useCallback((e: KeyboardEvent) => {
-        // 如果用户正在输入（input, textarea, contenteditable），忽略快捷键
         const target = e.target as HTMLElement;
         if (
             target.tagName === "INPUT" ||
@@ -27,112 +25,143 @@ export function SideMenu({ className }: SideMenuProps) {
             return;
         }
 
-        // 按 F 键切换菜单
         if (e.key === "f" || e.key === "F") {
             e.preventDefault();
-            setIsOpen((prev) => !prev);
+            setIsExpanded((prev) => !prev);
         }
 
-        // 按 ESC 键关闭菜单
-        if (e.key === "Escape" && isOpen) {
+        if (e.key === "Escape" && isExpanded) {
             e.preventDefault();
-            setIsOpen(false);
+            setIsExpanded(false);
         }
-    }, [isOpen]);
+    }, [isExpanded]);
 
-    // 添加全局键盘事件监听
     useEffect(() => {
         document.addEventListener("keydown", handleKeyDown);
-        return () => {
-            document.removeEventListener("keydown", handleKeyDown);
-        };
+        return () => document.removeEventListener("keydown", handleKeyDown);
     }, [handleKeyDown]);
 
     return (
         <>
-            {/* 侧边栏 */}
             <div
                 className={cn(
-                    "fixed top-0 right-0 h-full z-50 flex transition-transform duration-300 ease-in-out",
-                    isOpen ? "translate-x-0" : "translate-x-[280px]",
+                    "fixed inset-y-0 left-0 z-50 flex flex-col bg-white text-gray-800 transition-all duration-300 ease-[cubic-bezier(0.25,0.1,0.25,1.0)] border-r border-gray-200 shadow-xl",
+                    isExpanded ? "w-64" : "w-[68px]",
                     className
                 )}
+                onMouseEnter={() => {
+                    // Optional: Auto expand on hover if desired, but user asked for clicking. 
+                    // Sticking to click for stability unless requested.
+                }}
             >
-                {/* 展开/收起按钮 */}
-                <button
-                    onClick={() => setIsOpen(!isOpen)}
-                    className={cn(
-                        "absolute -left-12 top-1/2 -translate-y-1/2 w-12 h-24 rounded-l-2xl shadow-lg flex items-center justify-center transition-all duration-300 hover:scale-105",
-                        "bg-gradient-to-r from-[#ff7043] to-[#f4511e] text-white",
-                        isOpen && "from-gray-600 to-gray-700"
+                {/* Header / Toggle Area */}
+                <div className="h-16 flex items-center justify-center shrink-0 border-b border-gray-100">
+                    <button
+                        onClick={() => setIsExpanded(!isExpanded)}
+                        className={cn(
+                            "group flex items-center justify-center w-10 h-10 rounded-lg hover:bg-gray-100 transition-colors text-gray-400 hover:text-gray-900",
+                            isExpanded && "ml-auto mr-3" // Align right when expanded
+                        )}
+                        title={isExpanded ? "收起 (Esc)" : "展开菜单 (F)"}
+                    >
+                        {isExpanded ? <PanelLeftClose className="size-5" /> : <PanelLeftOpen className="size-5" />}
+                    </button>
+
+                    {isExpanded && (
+                        <div className="absolute left-4 font-bold text-lg tracking-tight bg-gradient-to-r from-orange-500 to-orange-600 bg-clip-text text-transparent opacity-0 animate-in fade-in slide-in-from-left-2 duration-300 fill-mode-forwards" style={{ animationDelay: '100ms' }}>
+                            ShowMenu
+                        </div>
                     )}
-                    aria-label={isOpen ? "收起菜单 (按 F 或 ESC)" : "展开菜单 (按 F)"}
-                >
-                    {isOpen ? (
-                        <ChevronRight className="size-6" />
-                    ) : (
-                        <ChevronLeft className="size-6" />
-                    )}
-                </button>
+                </div>
 
-                {/* 侧边栏内容 */}
-                <div className="w-[280px] h-full bg-white/95 backdrop-blur-md shadow-2xl border-l border-gray-200 flex flex-col">
-                    {/* 头部 */}
-                    <div className="p-6 border-b border-gray-100">
-                        <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
-                            <Menu className="size-5 text-[#ff7043]" />
-                            菜单工具
-                        </h2>
-                        <p className="text-sm text-gray-500 mt-1">快捷操作面板</p>
-                    </div>
+                {/* Scrollable Content */}
+                <div className="flex-1 flex flex-col gap-3 p-3 overflow-x-hidden overflow-y-auto">
+                    {/* Generate Menu Button */}
+                    <button
+                        onClick={() => {
+                            generateNewMenu();
+                            // Optional: Close on action
+                            // setIsExpanded(false); 
+                        }}
+                        className={cn(
+                            "relative flex items-center rounded-xl transition-all duration-200 group overflow-hidden",
+                            isExpanded ? "w-full p-3 bg-gradient-to-br from-orange-50 to-orange-100/50 hover:from-orange-100 hover:to-orange-200/50 border border-orange-200/60" : "w-11 h-11 justify-center hover:bg-gray-100"
+                        )}
+                        title="一键生成下周菜单"
+                    >
+                        <div className={cn(
+                            "flex items-center justify-center transition-all duration-300 z-10",
+                            isExpanded ? "text-orange-600" : "text-gray-400 group-hover:text-orange-500"
+                        )}>
+                            <Shuffle className={cn("transition-transform", isExpanded ? "size-5" : "size-6")} />
+                        </div>
 
-                    {/* 菜单项 */}
-                    <div className="flex-1 p-4 space-y-3">
-                        {/* 一键生成菜单 */}
-                        <Button
-                            onClick={() => {
-                                generateNewMenu();
-                                // 可选：生成后关闭菜单
-                                // setIsOpen(false);
-                            }}
-                            className="w-full h-14 bg-gradient-to-r from-[#ff7043] to-[#f4511e] hover:from-[#f4511e] hover:to-[#e64a19] text-white rounded-xl shadow-md transition-all hover:scale-[1.02] active:scale-95 flex items-center justify-center gap-3 text-base font-medium"
-                        >
-                            <Shuffle className="size-5" />
-                            一键生成下周菜单
-                        </Button>
+                        {/* Text Label - Only visible when expanded */}
+                        <div className={cn(
+                            "absolute left-10 ml-1 whitespace-nowrap transition-all duration-300 ease-in-out flex flex-col items-start gap-0.5",
+                            isExpanded ? "opacity-100 translate-x-0" : "opacity-0 -translate-x-4 pointer-events-none"
+                        )}>
+                            <span className="font-medium text-orange-900/80 text-[15px]">生成下周菜单</span>
+                            <span className="text-[10px] text-orange-700/50">随机生成新食谱</span>
+                        </div>
 
-                        {/* 分割线 */}
-                        <div className="h-px bg-gray-200 my-4" />
+                        {isExpanded && (
+                            <ChevronRight className="absolute right-3 size-4 text-orange-400/50 group-hover:text-orange-500 transition-colors" />
+                        )}
+                    </button>
 
-                        {/* 后台管理 */}
-                        <Link href="/edit" className="block">
-                            <Button
-                                variant="outline"
-                                className="w-full h-12 rounded-xl border-2 border-gray-200 hover:border-[#ff7043] hover:text-[#ff7043] transition-all hover:scale-[1.02] flex items-center justify-center gap-3 text-base"
-                            >
-                                <Settings className="size-5" />
-                                后台管理
-                            </Button>
-                        </Link>
-                    </div>
+                    <div className={cn("h-px bg-gray-100 my-1 mx-2", !isExpanded && "mx-1")} />
 
-                    {/* 底部 */}
-                    <div className="p-4 border-t border-gray-100 bg-gray-50/50">
-                        <p className="text-xs text-gray-400 text-center">
-                            按 <kbd className="px-1.5 py-0.5 bg-gray-200 rounded text-gray-600 font-mono">F</kbd> 打开/关闭菜单
-                        </p>
-                        <p className="text-xs text-gray-400 text-center mt-1">
-                            点击卡片头部可更换颜色 🎨
-                        </p>
-                    </div>
+                    {/* Admin Link */}
+                    <Link
+                        href="/edit"
+                        className={cn(
+                            "relative flex items-center rounded-xl transition-all duration-200 group overflow-hidden",
+                            isExpanded ? "w-full p-3 hover:bg-gray-100" : "w-11 h-11 justify-center hover:bg-gray-100"
+                        )}
+                        title="后台管理"
+                    >
+                        <div className={cn(
+                            "flex items-center justify-center transition-all duration-300 z-10",
+                            isExpanded ? "text-gray-400 group-hover:text-gray-600" : "text-gray-400 group-hover:text-gray-600"
+                        )}>
+                            <Settings className={cn("transition-transform", isExpanded ? "size-5" : "size-6")} />
+                        </div>
+
+                        <div className={cn(
+                            "absolute left-10 ml-1 whitespace-nowrap transition-all duration-300 ease-in-out",
+                            isExpanded ? "opacity-100 translate-x-0" : "opacity-0 -translate-x-4 pointer-events-none"
+                        )}>
+                            <span className="font-medium text-gray-600 text-[15px] group-hover:text-gray-900 transition-colors">后台管理</span>
+                        </div>
+                    </Link>
+                </div>
+
+                {/* Footer User/Profile Area - Placeholder for "Premium" feel */}
+                <div className="p-3 border-t border-gray-100 mt-auto">
+                    <button className={cn(
+                        "flex items-center rounded-lg transition-all duration-200 hover:bg-gray-50",
+                        isExpanded ? "w-full p-2 gap-3" : "w-11 h-11 justify-center"
+                    )}>
+                        <div className="size-8 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 shrink-0 flex items-center justify-center text-xs font-bold text-white shadow-sm ring-2 ring-white">
+                            Me
+                        </div>
+                        <div className={cn(
+                            "text-left overflow-hidden transition-all duration-300",
+                            isExpanded ? "w-auto opacity-100" : "w-0 opacity-0"
+                        )}>
+                            <div className="text-sm font-medium text-gray-700 truncate">Forest</div>
+                            <div className="text-xs text-gray-400 truncate">Pro Plan</div>
+                        </div>
+                    </button>
                 </div>
             </div>
 
-            {/* 背景遮罩 - 点击可关闭 */}
-            {isOpen && (
+            {/* Content Backdrop - Optional, if we want to dim the page when expanded on mobile */}
+            {isExpanded && (
                 <div
-                    className="fixed inset-0 bg-black/20 z-40 transition-opacity duration-300"
-                    onClick={() => setIsOpen(false)}
+                    className="fixed inset-0 bg-black/20 z-40 md:hidden animate-in fade-in duration-300"
+                    onClick={() => setIsExpanded(false)}
                 />
             )}
         </>
