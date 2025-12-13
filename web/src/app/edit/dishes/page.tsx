@@ -4,10 +4,11 @@ import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { useMenuStore } from "@/store/menuStore";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Plus, Trash2, Search } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Search, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { matchesSearch } from "@/lib/search";
-import { MultiSelect, MultiSelectOption } from "@/components/MultiSelect";
+import { TagSelector } from "@/components/TagSelector";
+import { IngredientPickerModal } from "@/components/IngredientPickerModal";
 import { EditableCell } from "@/components/EditableCell";
 import {
   AlertDialog,
@@ -26,7 +27,7 @@ import {
   ColumnDef,
   ColumnResizeMode,
 } from "@tanstack/react-table";
-import { Dish, Ingredient, IngredientColorName, Tag } from "@/types/menu";
+import { Dish, Ingredient, INGREDIENT_COLORS } from "@/types/menu";
 
 const COLUMN_SIZES_KEY = "dishes-column-sizes";
 
@@ -51,20 +52,87 @@ function saveColumnSizes(sizes: Record<string, number>) {
   }
 }
 
+// Ingredient display component (shows selected chips and opens modal)
+function IngredientCell({
+  selected,
+  ingredients,
+  onChange,
+  onCreateIngredient,
+  type,
+  placeholder,
+}: {
+  selected: string[];
+  ingredients: Ingredient[];
+  onChange: (selected: string[]) => void;
+  onCreateIngredient: (name: string, bgColor: string, textColor: string, type: 'main' | 'sub') => void;
+  type: 'main' | 'sub';
+  placeholder: string;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setIsOpen(true)}
+        className={cn(
+          "w-full min-h-[32px] px-2 py-1 border rounded-md bg-white text-left",
+          "hover:border-gray-400 transition-colors",
+          "flex flex-wrap items-center gap-1"
+        )}
+      >
+        {selected.length > 0 ? (
+          selected.map((name) => {
+            const ing = ingredients.find((i) => i.name === name);
+            return (
+              <span
+                key={name}
+                className="inline-flex items-center px-1.5 py-0.5 text-xs rounded-sm"
+                style={{
+                  backgroundColor: ing?.bgColor || INGREDIENT_COLORS.default.bg,
+                  color: ing?.textColor || INGREDIENT_COLORS.default.text
+                }}
+              >
+                {name}
+              </span>
+            );
+          })
+        ) : (
+          <span className="text-sm text-gray-400 flex items-center gap-1">
+            {placeholder}
+            <ChevronRight className="size-3" />
+          </span>
+        )}
+      </button>
+
+      <IngredientPickerModal
+        isOpen={isOpen}
+        onClose={() => setIsOpen(false)}
+        title={type === 'main' ? '选择主料' : '选择辅料'}
+        ingredients={ingredients}
+        selected={selected}
+        onChange={onChange}
+        onCreateIngredient={onCreateIngredient}
+        ingredientType={type}
+      />
+    </>
+  );
+}
+
 export default function DishesManagePage() {
-  const { 
-    dishes, 
-    tags, 
-    ingredients, 
-    addDish, 
-    removeDish, 
+  const {
+    dishes,
+    tags,
+    ingredients,
+    addDish,
+    removeDish,
     updateDish,
+    addTag,
+    removeTag,
+    updateTag,
     addIngredient,
-    removeIngredient,
-    updateIngredient,
-    reorderIngredients,
   } = useMenuStore();
-  
+
   const [searchTerm, setSearchTerm] = useState("");
   const [newDishName, setNewDishName] = useState("");
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
@@ -82,21 +150,9 @@ export default function DishesManagePage() {
     }
   }, [columnSizing]);
 
-  const filteredDishes = useMemo(() => 
+  const filteredDishes = useMemo(() =>
     dishes.filter((dish: Dish) => matchesSearch(dish.name, searchTerm)),
     [dishes, searchTerm]
-  );
-
-  // Convert ingredients to MultiSelectOption format
-  const ingredientOptions: MultiSelectOption[] = useMemo(() => 
-    ingredients.map((i: Ingredient) => ({ name: i.name, color: i.color as IngredientColorName })),
-    [ingredients]
-  );
-
-  // Convert tags to MultiSelectOption format
-  const tagOptions: MultiSelectOption[] = useMemo(() => 
-    tags.map((t: Tag) => ({ name: t.name, color: "default" as IngredientColorName })),
-    [tags]
   );
 
   const handleAddDish = () => {
@@ -138,10 +194,13 @@ export default function DishesManagePage() {
       size: 200,
       minSize: 120,
       cell: ({ row }) => (
-        <MultiSelect
-          options={tagOptions}
+        <TagSelector
+          tags={tags}
           selected={row.original.tags}
           onChange={(selected) => updateDish(row.original.name, { tags: selected })}
+          onCreateTag={addTag}
+          onDeleteTag={removeTag}
+          onUpdateTag={updateTag}
           placeholder="添加标签..."
           className="min-w-[100px]"
         />
@@ -153,16 +212,13 @@ export default function DishesManagePage() {
       size: 200,
       minSize: 120,
       cell: ({ row }) => (
-        <MultiSelect
-          options={ingredientOptions}
+        <IngredientCell
           selected={row.original.mainIngredients}
+          ingredients={ingredients}
           onChange={(selected) => updateDish(row.original.name, { mainIngredients: selected })}
-          onCreateOption={(name, color) => addIngredient(name, color)}
-          onDeleteOption={removeIngredient}
-          onUpdateOption={updateIngredient}
-          onReorderOptions={reorderIngredients}
-          placeholder="添加主料..."
-          className="min-w-[100px]"
+          onCreateIngredient={addIngredient}
+          type="main"
+          placeholder="选择主料..."
         />
       ),
     },
@@ -172,16 +228,13 @@ export default function DishesManagePage() {
       size: 200,
       minSize: 120,
       cell: ({ row }) => (
-        <MultiSelect
-          options={ingredientOptions}
+        <IngredientCell
           selected={row.original.subIngredients}
+          ingredients={ingredients}
           onChange={(selected) => updateDish(row.original.name, { subIngredients: selected })}
-          onCreateOption={(name, color) => addIngredient(name, color)}
-          onDeleteOption={removeIngredient}
-          onUpdateOption={updateIngredient}
-          onReorderOptions={reorderIngredients}
-          placeholder="添加辅料..."
-          className="min-w-[100px]"
+          onCreateIngredient={addIngredient}
+          type="sub"
+          placeholder="选择辅料..."
         />
       ),
     },
@@ -219,7 +272,7 @@ export default function DishesManagePage() {
         </Button>
       ),
     },
-  ], [tagOptions, ingredientOptions, updateDish, addIngredient, removeIngredient, updateIngredient, reorderIngredients]);
+  ], [tags, ingredients, updateDish, addTag, removeTag, updateTag, addIngredient]);
 
   const table = useReactTable({
     data: filteredDishes,
@@ -338,7 +391,7 @@ export default function DishesManagePage() {
                         <td
                           key={cell.id}
                           className="px-3 py-2 align-top"
-                          style={{ 
+                          style={{
                             width: cell.column.getSize(),
                             maxWidth: cell.column.getSize(),
                           }}

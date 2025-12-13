@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
-import { WeeklyMenu, MenuEntry, Dish, Tag, Ingredient, IngredientColorName } from "@/types/menu";
+import { WeeklyMenu, MenuEntry, Dish, Tag, Ingredient, IngredientColorName, INGREDIENT_COLORS } from "@/types/menu";
 import { initialWeeklyMenu } from "@/data/initialMenu";
 import { defaultDishes, defaultDishTags } from "@/data/dishes";
 import { initialIngredients } from "@/data/ingredients";
@@ -70,13 +70,12 @@ interface MenuState {
   removeTag: (tagName: string) => void;
   updateTag: (tagName: string, updates: Partial<Tag>) => void;
 
-  addIngredient: (name: string, color?: IngredientColorName) => void;
+  addIngredient: (name: string, bgColor?: string, textColor?: string, type?: 'main' | 'sub') => void;
   removeIngredient: (name: string) => void;
   updateIngredient: (oldName: string, updates: Partial<Ingredient>) => void;
   reorderIngredients: (ingredients: Ingredient[]) => void;
 
   getTagColor: (tagName: string) => string;
-  getIngredientColor: (name: string) => IngredientColorName;
 }
 
 export const useMenuStore = create<MenuState>()(
@@ -279,11 +278,11 @@ export const useMenuStore = create<MenuState>()(
         return "#6b7280";
       },
 
-      addIngredient: (name, color = "default") =>
+      addIngredient: (name, bgColor = INGREDIENT_COLORS.default.bg, textColor = INGREDIENT_COLORS.default.text, type = "main") =>
         set((state) => {
           const trimmedName = name.trim();
           if (!trimmedName || state.ingredients.some((i) => i.name === trimmedName)) return state;
-          return { ingredients: [...state.ingredients, { name: trimmedName, color }] };
+          return { ingredients: [...state.ingredients, { name: trimmedName, bgColor, textColor, type }] };
         }),
 
       removeIngredient: (name) =>
@@ -326,11 +325,6 @@ export const useMenuStore = create<MenuState>()(
 
       reorderIngredients: (ingredients) =>
         set({ ingredients }),
-
-      getIngredientColor: (name) => {
-        // This will be resolved at runtime after store is created
-        return "default" as IngredientColorName;
-      },
     }),
     {
       name: "menu-storage",
@@ -397,11 +391,31 @@ export const useMenuStore = create<MenuState>()(
               const defaultIng = initialIngredients.find((i) => i.name === name);
               return {
                 name,
-                color: defaultIng?.color ?? "default",
+                bgColor: defaultIng?.bgColor ?? INGREDIENT_COLORS.default.bg,
+                textColor: defaultIng?.textColor ?? INGREDIENT_COLORS.default.text,
+                type: defaultIng?.type ?? "main",
               };
             });
           } else {
-            migratedIngredients = persistedIngredients as Ingredient[];
+            // 确保所有食材都有新字段（旧数据可能没有）
+            migratedIngredients = (persistedIngredients as (Ingredient & { color?: string })[]).map((ing) => {
+              // Handle old 'color' field migration to bgColor/textColor
+              if (!ing.bgColor && ing.color) {
+                const colorData = INGREDIENT_COLORS[ing.color as IngredientColorName] || INGREDIENT_COLORS.default;
+                return {
+                  name: ing.name,
+                  bgColor: colorData.bg,
+                  textColor: colorData.text,
+                  type: ing.type ?? "main",
+                };
+              }
+              // Ensure type field exists
+              if (!ing.type) {
+                const defaultIng = initialIngredients.find((i) => i.name === ing.name);
+                return { ...ing, type: defaultIng?.type ?? "main" };
+              }
+              return ing;
+            });
           }
         }
 
