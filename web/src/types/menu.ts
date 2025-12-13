@@ -44,6 +44,7 @@ export interface DayMenu {
   day: string;
   theme: string;
   color: string;
+  locked?: boolean;
   entries: MenuEntry[];
 }
 

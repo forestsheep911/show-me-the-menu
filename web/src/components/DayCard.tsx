@@ -7,7 +7,7 @@ import { useMenuStore, SOFT_CARD_COLORS } from "@/store/menuStore";
 import { DishSelector } from "./DishSelector";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { Trash2 } from "lucide-react";
+import { Trash2, Lock, Unlock } from "lucide-react";
 import { Button } from "./ui/button";
 import { HexColorPicker, HexColorInput } from "react-colorful";
 import {
@@ -28,6 +28,7 @@ export function DayCard({ menu, index, className }: DayCardProps) {
   const addMenuEntry = useMenuStore((state: { addMenuEntry: (dayIndex: number, tags?: string[]) => void }) => state.addMenuEntry);
   const removeMenuEntry = useMenuStore((state: { removeMenuEntry: (dayIndex: number, entryId: string) => void }) => state.removeMenuEntry);
   const updateDayColor = useMenuStore((state: { updateDayColor: (dayIndex: number, color: string) => void }) => state.updateDayColor);
+  const toggleDayLock = useMenuStore((state: { toggleDayLock: (dayIndex: number) => void }) => state.toggleDayLock);
   const dishes = useMenuStore((state: { dishes: Dish[] }) => state.dishes);
   const tags = useMenuStore((state: { tags: Tag[] }) => state.tags);
 
@@ -83,13 +84,28 @@ export function DayCard({ menu, index, className }: DayCardProps) {
         {...listeners}
       >
         <div
-          className="p-4 text-center text-white font-bold text-lg cursor-pointer hover:opacity-90 transition-opacity"
+          className="relative p-4 text-center text-white font-bold text-lg cursor-pointer hover:opacity-90 transition-opacity"
           style={{ backgroundColor: menu.color }}
           onClick={handleHeaderClick}
           onPointerDown={(e) => e.stopPropagation()}
           title="点击更换颜色"
         >
           <div>{menu.day}</div>
+
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              toggleDayLock(index);
+            }}
+            className="absolute right-3 top-1/2 -translate-y-1/2 p-2 hover:bg-black/10 rounded-full transition-colors"
+            title={menu.locked ? "已锁定 (不会被随机生成覆盖)" : "未锁定 (点击锁定)"}
+          >
+            {menu.locked ? (
+              <Lock className="size-4 text-white/90" />
+            ) : (
+              <Unlock className="size-4 text-white/50 hover:text-white/90" />
+            )}
+          </button>
         </div>
 
         <div className="p-4 cursor-default flex-1 flex flex-col gap-4" onPointerDown={(e) => e.stopPropagation()}>
@@ -182,8 +198,8 @@ export function DayCard({ menu, index, className }: DayCardProps) {
                     key={color}
                     onClick={() => handlePresetClick(color)}
                     className={`w-10 h-10 rounded-lg border-2 transition-all hover:scale-110 ${tempColor === color
-                        ? "border-gray-800 ring-2 ring-gray-400"
-                        : "border-transparent hover:border-gray-300"
+                      ? "border-gray-800 ring-2 ring-gray-400"
+                      : "border-transparent hover:border-gray-300"
                       }`}
                     style={{ backgroundColor: color }}
                     title={color}

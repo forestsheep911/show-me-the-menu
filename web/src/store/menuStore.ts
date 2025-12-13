@@ -60,6 +60,7 @@ interface MenuState {
   addMenuEntry: (dayIndex: number, tags?: string[]) => void;
   removeMenuEntry: (dayIndex: number, entryId: string) => void;
   updateDayColor: (dayIndex: number, color: string) => void; // 更新单天卡片颜色
+  toggleDayLock: (dayIndex: number) => void; // 切换锁定状态
   setBackgroundColor: (color: string) => void; // 设置背景色
 
   addDish: (dishName: string, tags?: string[], mainIngredients?: string[], subIngredients?: string[], steps?: string) => void;
@@ -92,17 +93,33 @@ export const useMenuStore = create<MenuState>()(
       generateNewMenu: () =>
         set((state) => {
           // 随机选择5个不重复的颜色分配给每天
-          const randomColors = shuffleAndPick(SOFT_CARD_COLORS, 5);
+          // 只为未锁定的天生成新颜色（或者全部重新生成颜色？通常锁定也意味着锁定颜色，保持一致性比较好）
+          // 这里我们假设锁定意味着"完全不变"，包括颜色。
+          // 所以我们需要先找出哪些天没被锁定，然后为它们挑选颜色。
+          // 但为了简单和美观，如果重新洗牌颜色可能更好，除非用户明确想保留颜色。
+          // 既然是"这一天的菜单我都满意"，通常包含颜色风格。我们保留颜色。
 
-          const newMenu: WeeklyMenu = state.weeklyMenu.map((day, index) => ({
-            ...day,
-            color: randomColors[index] ?? day.color, // 使用随机颜色
-            entries: day.entries.map((entry) => {
-              const candidates = filterDishesByTags(state.dishes, entry.tags);
-              if (candidates.length === 0) return entry;
-              return { ...entry, dishName: getRandomItem(candidates).name };
-            }),
-          }));
+          const unlockedCount = state.weeklyMenu.filter(d => !d.locked).length;
+          const randomColors = shuffleAndPick(SOFT_CARD_COLORS, unlockedCount);
+          let colorIndex = 0;
+
+          const newMenu: WeeklyMenu = state.weeklyMenu.map((day) => {
+            if (day.locked) {
+              return day;
+            }
+
+            const newColor = randomColors[colorIndex++] ?? day.color;
+
+            return {
+              ...day,
+              color: newColor,
+              entries: day.entries.map((entry) => {
+                const candidates = filterDishesByTags(state.dishes, entry.tags);
+                if (candidates.length === 0) return entry;
+                return { ...entry, dishName: getRandomItem(candidates).name };
+              }),
+            };
+          });
 
           return { weeklyMenu: newMenu };
         }),
@@ -150,6 +167,16 @@ export const useMenuStore = create<MenuState>()(
           newMenu[dayIndex] = {
             ...newMenu[dayIndex],
             color,
+          };
+          return { weeklyMenu: newMenu };
+        }),
+
+      toggleDayLock: (dayIndex) =>
+        set((state) => {
+          const newMenu = [...state.weeklyMenu];
+          newMenu[dayIndex] = {
+            ...newMenu[dayIndex],
+            locked: !newMenu[dayIndex].locked,
           };
           return { weeklyMenu: newMenu };
         }),
