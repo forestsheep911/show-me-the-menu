@@ -61,6 +61,7 @@ interface MenuState {
   removeMenuEntry: (dayIndex: number, entryId: string) => void;
   updateDayColor: (dayIndex: number, color: string) => void; // 更新单天卡片颜色
   toggleDayLock: (dayIndex: number) => void; // 切换锁定状态
+  updateDayNote: (dayIndex: number, note: string | undefined) => void; // 更新备注
   setBackgroundColor: (color: string) => void; // 设置背景色
 
   addDish: (dishName: string, tags?: string[], mainIngredients?: string[], subIngredients?: string[], steps?: string) => void;
@@ -177,6 +178,16 @@ export const useMenuStore = create<MenuState>()(
           newMenu[dayIndex] = {
             ...newMenu[dayIndex],
             locked: !newMenu[dayIndex].locked,
+          };
+          return { weeklyMenu: newMenu };
+        }),
+
+      updateDayNote: (dayIndex, note) =>
+        set((state) => {
+          const newMenu = [...state.weeklyMenu];
+          newMenu[dayIndex] = {
+            ...newMenu[dayIndex],
+            note, // note 为 undefined 时表示删除备注 ? 或者是空字符串。我们兼容两者。
           };
           return { weeklyMenu: newMenu };
         }),

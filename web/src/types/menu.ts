@@ -45,6 +45,7 @@ export interface DayMenu {
   theme: string;
   color: string;
   locked?: boolean;
+  note?: string; // 每日备注
   entries: MenuEntry[];
 }
 

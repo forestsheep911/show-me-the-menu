@@ -12,15 +12,14 @@ export default function EditMenuPage() {
     <main className="flex flex-col w-full min-h-screen bg-gray-50/50">
       {/* Header */}
       <header className="sticky top-0 z-10 bg-white/80 backdrop-blur-md border-b p-4 shadow-sm">
-        <div className="max-w-3xl mx-auto flex items-center justify-between w-full">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" asChild>
-              <Link href="/">
-                <ArrowLeft className="size-5" />
-              </Link>
-            </Button>
-            <h1 className="text-xl font-bold text-gray-800">后台管理</h1>
-          </div>
+        <div className="max-w-3xl mx-auto flex items-center justify-between w-full">          <div className="flex items-center gap-4">
+          <Button variant="ghost" size="icon" asChild>
+            <Link href="/">
+              <ArrowLeft className="size-5" />
+            </Link>
+          </Button>
+          <h1 className="text-xl font-bold text-gray-800">后台管理</h1>
+        </div>
         </div>
       </header>
 

@@ -45,7 +45,7 @@ export function SideMenu({ className }: SideMenuProps) {
         <>
             <div
                 className={cn(
-                    "fixed inset-y-0 left-0 z-50 flex flex-col bg-white text-gray-800 transition-all duration-300 ease-[cubic-bezier(0.25,0.1,0.25,1.0)] border-r border-gray-200 shadow-xl",
+                    "sticky top-0 h-screen shrink-0 flex flex-col bg-white text-gray-800 transition-all duration-300 ease-[cubic-bezier(0.25,0.1,0.25,1.0)] border-r border-gray-200 shadow-xl",
                     isExpanded ? "w-64" : "w-[68px]",
                     className
                 )}

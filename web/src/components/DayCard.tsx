@@ -1,13 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { DayMenu, Dish, Tag } from "@/types/menu";
 import { cn } from "@/lib/utils";
 import { useMenuStore, SOFT_CARD_COLORS } from "@/store/menuStore";
 import { DishSelector } from "./DishSelector";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { Trash2, Lock, Unlock } from "lucide-react";
+import { Trash2, Lock, Unlock, Plus, NotebookPen, X } from "lucide-react";
 import { Button } from "./ui/button";
 import { HexColorPicker, HexColorInput } from "react-colorful";
 import {
@@ -16,6 +16,32 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+
+interface AutoResizeTextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
+  value: string;
+  onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
+}
+
+function AutoResizeTextarea({ value, onChange, ...props }: AutoResizeTextareaProps) {
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = "auto";
+      textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
+    }
+  }, [value]);
+
+  return (
+    <textarea
+      ref={textareaRef}
+      value={value}
+      onChange={onChange}
+      rows={1}
+      {...props}
+    />
+  );
+}
 
 interface DayCardProps {
   menu: DayMenu;
@@ -29,6 +55,7 @@ export function DayCard({ menu, index, className }: DayCardProps) {
   const removeMenuEntry = useMenuStore((state: { removeMenuEntry: (dayIndex: number, entryId: string) => void }) => state.removeMenuEntry);
   const updateDayColor = useMenuStore((state: { updateDayColor: (dayIndex: number, color: string) => void }) => state.updateDayColor);
   const toggleDayLock = useMenuStore((state: { toggleDayLock: (dayIndex: number) => void }) => state.toggleDayLock);
+  const updateDayNote = useMenuStore((state: { updateDayNote: (dayIndex: number, note: string | undefined) => void }) => state.updateDayNote);
   const dishes = useMenuStore((state: { dishes: Dish[] }) => state.dishes);
   const tags = useMenuStore((state: { tags: Tag[] }) => state.tags);
 
@@ -84,28 +111,69 @@ export function DayCard({ menu, index, className }: DayCardProps) {
         {...listeners}
       >
         <div
-          className="relative p-4 text-center text-white font-bold text-lg cursor-pointer hover:opacity-90 transition-opacity"
+          className="relative px-3 py-3 flex items-center justify-between text-white font-bold"
           style={{ backgroundColor: menu.color }}
-          onClick={handleHeaderClick}
-          onPointerDown={(e) => e.stopPropagation()}
-          title="点击更换颜色"
         >
-          <div>{menu.day}</div>
+          {/* Left: Add & Note Actions */}
+          <div className="flex items-center gap-1 z-10">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                addMenuEntry(index);
+              }}
+              className="p-1.5 hover:bg-black/10 rounded-full transition-colors"
+              title="添加菜品"
+            >
+              <Plus className="size-5" />
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                if (menu.note !== undefined) {
+                  // If note exists, delete it (set to undefined)
+                  updateDayNote(index, undefined);
+                } else {
+                  // If note doesn't exist, create it (set to empty string)
+                  updateDayNote(index, "");
+                }
+              }}
+              className="p-1.5 hover:bg-black/10 rounded-full transition-colors"
+              title={menu.note !== undefined ? "删除备注" : "添加备注"}
+            >
+              {menu.note !== undefined ? (
+                <Trash2 className="size-5" />
+              ) : (
+                <NotebookPen className="size-5" />
+              )}
+            </button>
+          </div>
 
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              toggleDayLock(index);
-            }}
-            className="absolute right-3 top-1/2 -translate-y-1/2 p-2 hover:bg-black/10 rounded-full transition-colors"
-            title={menu.locked ? "已锁定 (不会被随机生成覆盖)" : "未锁定 (点击锁定)"}
+          {/* Center: Title (Color Picker trigger) */}
+          <div
+            className="absolute left-1/2 -translate-x-1/2 text-lg cursor-pointer hover:opacity-80 transition-opacity select-none"
+            onClick={handleHeaderClick}
+            title="点击更换颜色"
           >
-            {menu.locked ? (
-              <Lock className="size-4 text-white/90" />
-            ) : (
-              <Unlock className="size-4 text-white/50 hover:text-white/90" />
-            )}
-          </button>
+            {menu.day}
+          </div>
+
+          {/* Right: Lock Action */}
+          <div className="flex items-center gap-1 z-10">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                toggleDayLock(index);
+              }}
+              className="p-1.5 hover:bg-black/10 rounded-full transition-colors"
+              title={menu.locked ? "已锁定 (不会被随机生成覆盖)" : "未锁定 (点击锁定)"}
+            >
+              {menu.locked ? (
+                <Lock className="size-5 text-white/90" />
+              ) : (
+                <Unlock className="size-5 text-white/50 hover:text-white/90" />
+              )}
+            </button>
+          </div>
         </div>
 
         <div className="p-4 cursor-default flex-1 flex flex-col gap-4" onPointerDown={(e) => e.stopPropagation()}>
@@ -156,13 +224,18 @@ export function DayCard({ menu, index, className }: DayCardProps) {
             );
           })}
 
-          <Button
-            variant="secondary"
-            className="w-full border-dashed border-2 border-gray-200 text-gray-500 hover:text-[#ff7043] hover:border-[#ff7043]/50"
-            onClick={() => addMenuEntry(index)}
-          >
-            + 添加菜品
-          </Button>
+          {/* Note Area */}
+          {menu.note !== undefined && (
+            <div className="mt-auto pt-2 border-t border-dashed border-gray-200">
+              <AutoResizeTextarea
+                value={menu.note}
+                onChange={(e) => updateDayNote(index, e.target.value)}
+                placeholder="写点备注..."
+                className="w-full text-sm text-gray-600 bg-transparent border-none resize-none focus:ring-0 px-1 py-1 min-h-[40px] overflow-hidden placeholder:text-gray-300"
+                onPointerDown={(e) => e.stopPropagation()}
+              />
+            </div>
+          )}
         </div>
       </div>
 
