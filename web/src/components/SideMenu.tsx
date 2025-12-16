@@ -1,19 +1,49 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, RefObject } from "react";
 import Link from "next/link";
-import { Settings, Shuffle, ChevronRight, Pin, PinOff } from "lucide-react";
+import { Settings, Shuffle, ChevronRight, Pin, PinOff, Camera, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useMenuStore } from "@/store/menuStore";
+import { toPng } from "html-to-image";
 
 interface SideMenuProps {
     className?: string;
+    weekViewRef?: RefObject<HTMLDivElement | null>;
 }
 
-export function SideMenu({ className }: SideMenuProps) {
+export function SideMenu({ className, weekViewRef }: SideMenuProps) {
     const [isPinned, setIsPinned] = useState(false);
     const [isHovered, setIsHovered] = useState(false);
+    const [isCapturing, setIsCapturing] = useState(false);
     const generateNewMenu = useMenuStore((state) => state.generateNewMenu);
+
+    // 截图功能
+    const handleCapture = useCallback(async () => {
+        if (!weekViewRef?.current || isCapturing) return;
+
+        setIsCapturing(true);
+        try {
+            const dataUrl = await toPng(weekViewRef.current, {
+                backgroundColor: '#fafafa', // 匹配 bg-gray-50/50
+                quality: 1.0,
+                pixelRatio: 2, // 高清截图
+            });
+
+            // 创建下载链接
+            const link = document.createElement('a');
+            const now = new Date();
+            const dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+            link.download = `周菜单_${dateStr}.png`;
+            link.href = dataUrl;
+            link.click();
+        } catch (error) {
+            console.error('截图失败:', error);
+            alert('截图失败，请重试');
+        } finally {
+            setIsCapturing(false);
+        }
+    }, [weekViewRef, isCapturing]);
 
     // 展开状态：固定时始终展开，非固定时只在hover时展开
     const isExpanded = isPinned || isHovered;
@@ -123,6 +153,31 @@ export function SideMenu({ className }: SideMenuProps) {
                             </div>
 
                             <ChevronRight className="absolute right-3 size-4 text-orange-400/50 group-hover:text-orange-500 transition-colors" />
+                        </button>
+
+                        {/* Screenshot Button */}
+                        <button
+                            onClick={handleCapture}
+                            disabled={isCapturing || !weekViewRef}
+                            className="relative flex items-center w-full p-3 rounded-xl transition-all duration-200 group overflow-hidden bg-gradient-to-br from-blue-50 to-blue-100/50 hover:from-blue-100 hover:to-blue-200/50 border border-blue-200/60 disabled:opacity-50 disabled:cursor-not-allowed"
+                            title="截图保存菜单"
+                        >
+                            <div className="flex items-center justify-center text-blue-600">
+                                {isCapturing ? (
+                                    <Loader2 className="size-5 animate-spin" />
+                                ) : (
+                                    <Camera className="size-5" />
+                                )}
+                            </div>
+
+                            <div className="ml-3 flex flex-col items-start gap-0.5">
+                                <span className="font-medium text-blue-900/80 text-[15px]">
+                                    {isCapturing ? '正在截图...' : '截图保存'}
+                                </span>
+                                <span className="text-[10px] text-blue-700/50">完整菜单高清图片</span>
+                            </div>
+
+                            <ChevronRight className="absolute right-3 size-4 text-blue-400/50 group-hover:text-blue-500 transition-colors" />
                         </button>
 
                         <div className="h-px bg-gray-100 my-1 mx-2" />

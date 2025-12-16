@@ -1,14 +1,20 @@
+"use client";
+
+import { useRef } from "react";
 import { WeekView } from "@/components/WeekView";
 import { SideMenu } from "@/components/SideMenu";
 
 export default function Home() {
+  const weekViewRef = useRef<HTMLDivElement>(null);
+
   return (
     <main className="flex flex-row items-start w-full min-h-screen bg-gray-50/50 relative">
-      <SideMenu />
+      <SideMenu weekViewRef={weekViewRef} />
       <div className="flex-1 w-full p-6">
-        <WeekView />
+        <div ref={weekViewRef}>
+          <WeekView />
+        </div>
       </div>
     </main>
   );
 }
-
