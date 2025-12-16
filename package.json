@@ -1,0 +1,7 @@
+{
+  "name": "show-me-the-menu-root",
+  "private": true,
+  "scripts": {
+    "dev": "pnpm -C web dev"
+  }
+}
