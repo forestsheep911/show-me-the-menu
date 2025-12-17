@@ -4,11 +4,9 @@ import { useState, useRef, useEffect } from "react";
 import { DayMenu, Dish, Tag } from "@/types/menu";
 import { cn } from "@/lib/utils";
 import { useMenuStore, SOFT_CARD_COLORS } from "@/store/menuStore";
-import { DishSelector } from "./DishSelector";
-import { useSortable } from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
-import { Trash2, Lock, Unlock, Plus, NotebookPen, X } from "lucide-react";
-import { Button } from "./ui/button";
+import { DishCard } from "./DishCard";
+import { useDroppable } from "@dnd-kit/core";
+import { Trash2, Lock, Unlock, Plus, NotebookPen } from "lucide-react";
 import { HexColorPicker, HexColorInput } from "react-colorful";
 import {
   Dialog,
@@ -47,37 +45,39 @@ interface DayCardProps {
   menu: DayMenu;
   index: number; // Day index (0-4)
   className?: string;
+  isDropTarget?: boolean;
 }
 
-export function DayCard({ menu, index, className }: DayCardProps) {
-  const updateEntryDish = useMenuStore((state: { updateEntryDish: (dayIndex: number, entryId: string, dishName: string) => void }) => state.updateEntryDish);
-  const addMenuEntry = useMenuStore((state: { addMenuEntry: (dayIndex: number, tags?: string[]) => void }) => state.addMenuEntry);
-  const removeMenuEntry = useMenuStore((state: { removeMenuEntry: (dayIndex: number, entryId: string) => void }) => state.removeMenuEntry);
-  const updateDayColor = useMenuStore((state: { updateDayColor: (dayIndex: number, color: string) => void }) => state.updateDayColor);
-  const toggleDayLock = useMenuStore((state: { toggleDayLock: (dayIndex: number) => void }) => state.toggleDayLock);
-  const updateDayNote = useMenuStore((state: { updateDayNote: (dayIndex: number, note: string | undefined) => void }) => state.updateDayNote);
-  const dishes = useMenuStore((state: { dishes: Dish[] }) => state.dishes);
-  const tags = useMenuStore((state: { tags: Tag[] }) => state.tags);
+export function DayCard({ menu, index, className, isDropTarget = false }: DayCardProps) {
+  const updateEntryDish = useMenuStore((state) => state.updateEntryDish);
+  const addMenuEntry = useMenuStore((state) => state.addMenuEntry);
+  const removeMenuEntry = useMenuStore((state) => state.removeMenuEntry);
+  const updateDayColor = useMenuStore((state) => state.updateDayColor);
+  const toggleDayLock = useMenuStore((state) => state.toggleDayLock);
+  const updateDayNote = useMenuStore((state) => state.updateDayNote);
+  const dishes = useMenuStore((state) => state.dishes);
+  const tags = useMenuStore((state) => state.tags);
 
   const [colorPickerOpen, setColorPickerOpen] = useState(false);
   const [tempColor, setTempColor] = useState(menu.color);
 
-  // dnd-kit hook for sortable items
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging
-  } = useSortable({ id: menu.day });
+  // Droppable for the day container (for empty days or dropping at end)
+  const { setNodeRef: setDroppableRef, isOver } = useDroppable({
+    id: `day-container-${index}`,
+    data: {
+      type: "day-container",
+      dayIndex: index,
+    },
+  });
 
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    zIndex: isDragging ? 10 : 1,
-    opacity: isDragging ? 0.5 : 1,
-  };
+  // Droppable for the end of the list (allows dropping at the bottom)
+  const { setNodeRef: setEndZoneRef, isOver: isOverEndZone } = useDroppable({
+    id: `day-end-zone-${index}`,
+    data: {
+      type: "day-end-zone",
+      dayIndex: index,
+    },
+  });
 
   const handleHeaderClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -99,16 +99,13 @@ export function DayCard({ menu, index, className }: DayCardProps) {
   return (
     <>
       <div
-        ref={setNodeRef}
         suppressHydrationWarning
-        style={{ ...style, borderColor: menu.color }}
+        style={{ borderColor: isDropTarget || isOver ? "#3b82f6" : menu.color }}
         className={cn(
-          "bg-white rounded-[20px] shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden border-2 border-transparent select-none flex flex-col",
-          isDragging ? "shadow-2xl scale-105 cursor-grabbing" : "cursor-grab",
+          "bg-white rounded-[20px] shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden border-2 select-none flex flex-col",
+          isDropTarget || isOver ? "ring-2 ring-blue-400 ring-offset-2 shadow-lg" : "",
           className
         )}
-        {...attributes}
-        {...listeners}
       >
         <div
           className="relative px-3 py-3 flex items-center justify-between text-white font-bold"
@@ -176,53 +173,57 @@ export function DayCard({ menu, index, className }: DayCardProps) {
           </div>
         </div>
 
-        <div className="p-4 cursor-default flex-1 flex flex-col gap-4" onPointerDown={(e) => e.stopPropagation()}>
-          {/* Stop propagation so clicking inside doesn't trigger drag */}
+        <div
+          ref={setDroppableRef}
+          className={cn(
+            "p-4 flex-1 flex flex-col gap-3 min-h-[120px] transition-colors duration-200",
+            (isDropTarget || isOver) && "bg-blue-50/50"
+          )}
+        >
           {(menu.entries ?? []).map((entry) => {
             const dishList = Array.isArray(dishes) ? dishes : [];
-            const dish = dishList.find((d) => d.name === entry.dishName);
-            const dishTags = dish?.tags ?? [];
+            const dish = dishList.find((d: Dish) => d.name === entry.dishName);
 
             return (
-              <div
+              <DishCard
                 key={entry.id}
-                className="rounded-xl border border-gray-100 p-3 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.02)] bg-white/70"
-              >
-                <div className="flex items-start justify-between gap-3 mb-2">
-                  <DishSelector
-                    entryTags={entry.tags}
-                    currentDish={entry.dishName || "点击选择菜品"}
-                    onSelect={(newDish) => updateEntryDish(index, entry.id, newDish)}
-                  />
-                  <button
-                    onClick={() => removeMenuEntry(index, entry.id)}
-                    className="text-gray-400 hover:text-red-500 transition-colors shrink-0"
-                    aria-label="删除菜品"
-                  >
-                    <Trash2 className="size-4" />
-                  </button>
-                </div>
-                {dishTags.length > 0 && (
-                  <div className="flex flex-wrap gap-1">
-                    {dishTags.map((tagName: string) => {
-                      const tagList = Array.isArray(tags) ? tags : [];
-                      const tagInfo = tagList.find((t: Tag) => t.name === tagName);
-                      const tagColor = tagInfo?.color ?? "#6b7280";
-                      return (
-                        <span
-                          key={tagName}
-                          className="px-2 py-0.5 text-xs rounded-full text-white"
-                          style={{ backgroundColor: tagColor }}
-                        >
-                          {tagName}
-                        </span>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
+                entry={entry}
+                dayIndex={index}
+                dish={dish}
+                tags={tags}
+                onUpdateDish={(newDish) => updateEntryDish(index, entry.id, newDish)}
+                onRemove={() => removeMenuEntry(index, entry.id)}
+              />
             );
           })}
+
+          {/* Empty state hint */}
+          {menu.entries.length === 0 && (
+            <div className="flex-1 flex items-center justify-center text-gray-300 text-sm">
+              点击 + 添加菜品
+            </div>
+          )}
+
+          {/* Drop zone for adding to end of list */}
+          {menu.entries.length > 0 && (
+            <div
+              ref={setEndZoneRef}
+              className={cn(
+                "min-h-[24px] rounded-lg transition-all duration-200 relative",
+                isOverEndZone && "min-h-[32px]"
+              )}
+            >
+              {/* Drop indicator line at the end */}
+              {isOverEndZone && (
+                <div className="absolute top-1 left-0 right-0 z-10">
+                  <div className="relative h-0.5 w-full bg-blue-500 rounded-full shadow-sm">
+                    <div className="absolute left-0 top-1/2 -translate-y-1/2 size-2.5 bg-blue-500 rounded-full -translate-x-1" />
+                    <div className="absolute right-0 top-1/2 -translate-y-1/2 size-2.5 bg-blue-500 rounded-full translate-x-1" />
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Note Area */}
           {menu.note !== undefined && (
@@ -237,6 +238,7 @@ export function DayCard({ menu, index, className }: DayCardProps) {
             </div>
           )}
         </div>
+
       </div>
 
       {/* 颜色选择器对话框 */}

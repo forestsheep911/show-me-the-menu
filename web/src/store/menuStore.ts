@@ -63,6 +63,9 @@ interface MenuState {
   toggleDayLock: (dayIndex: number) => void; // 切换锁定状态
   updateDayNote: (dayIndex: number, note: string | undefined) => void; // 更新备注
   setBackgroundColor: (color: string) => void; // 设置背景色
+  // 拖拽相关
+  moveDishEntry: (fromDayIndex: number, toDayIndex: number, entryId: string, toIndex: number) => void;
+  reorderDishEntries: (dayIndex: number, entryIds: string[]) => void;
 
   addDish: (dishName: string, tags?: string[], mainIngredients?: string[], subIngredients?: string[], steps?: string) => void;
   removeDish: (dishName: string) => void;
@@ -193,6 +196,49 @@ export const useMenuStore = create<MenuState>()(
         }),
 
       setBackgroundColor: (color) => set({ backgroundColor: color }),
+
+      // 将菜品从一天移动到另一天的指定位置
+      moveDishEntry: (fromDayIndex, toDayIndex, entryId, toIndex) =>
+        set((state) => {
+          const newMenu = [...state.weeklyMenu];
+          const fromDay = { ...newMenu[fromDayIndex] };
+          const toDay = fromDayIndex === toDayIndex ? fromDay : { ...newMenu[toDayIndex] };
+
+          // 找到要移动的 entry
+          const entryIndex = fromDay.entries.findIndex((e) => e.id === entryId);
+          if (entryIndex === -1) return state;
+
+          const [entry] = fromDay.entries.splice(entryIndex, 1);
+
+          // 如果是同一天，需要调整目标索引
+          let adjustedToIndex = toIndex;
+          if (fromDayIndex === toDayIndex && entryIndex < toIndex) {
+            adjustedToIndex = toIndex - 1;
+          }
+
+          // 插入到目标位置
+          if (fromDayIndex === toDayIndex) {
+            fromDay.entries.splice(adjustedToIndex, 0, entry);
+            newMenu[fromDayIndex] = { ...fromDay, entries: [...fromDay.entries] };
+          } else {
+            toDay.entries.splice(toIndex, 0, entry);
+            newMenu[fromDayIndex] = { ...fromDay, entries: [...fromDay.entries] };
+            newMenu[toDayIndex] = { ...toDay, entries: [...toDay.entries] };
+          }
+
+          return { weeklyMenu: newMenu };
+        }),
+
+      // 同一天内重新排序
+      reorderDishEntries: (dayIndex, entryIds) =>
+        set((state) => {
+          const newMenu = [...state.weeklyMenu];
+          const day = newMenu[dayIndex];
+          const entryMap = new Map(day.entries.map((e) => [e.id, e]));
+          const reorderedEntries = entryIds.map((id) => entryMap.get(id)).filter(Boolean) as typeof day.entries;
+          newMenu[dayIndex] = { ...day, entries: reorderedEntries };
+          return { weeklyMenu: newMenu };
+        }),
 
       addDish: (dishName, tags = [], mainIngredients = [], subIngredients = [], steps = "") =>
         set((state) => {
