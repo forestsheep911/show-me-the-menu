@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, RefObject } from "react";
 import Link from "next/link";
-import { Settings, Shuffle, ChevronRight, Pin, PinOff, Camera, Loader2, PanelLeftOpen, PanelLeftClose } from "lucide-react";
+import { Settings, Shuffle, ChevronRight, Pin, PinOff, Camera, Loader2, PanelLeftOpen, PanelLeftClose, Menu } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useMenuStore } from "@/store/menuStore";
 import { toPng } from "html-to-image";
@@ -89,15 +89,16 @@ export function SideMenu({ className, weekViewRef }: SideMenuProps) {
     // 计算当前菜单宽度
     const currentWidth = showExpanded ? MENU_WIDTH_EXPANDED : MENU_WIDTH_COLLAPSED;
 
+    // 计算占位宽度：固定模式用当前宽度，非固定模式用窄版宽度（给菜单留空间）
+    const placeholderWidth = isPinned ? currentWidth : MENU_WIDTH_COLLAPSED;
+
     return (
         <>
-            {/* 占位元素：当固定时在文档流中占据空间 */}
-            {isPinned && (
-                <div
-                    className="h-screen shrink-0 transition-all duration-300 ease-[cubic-bezier(0.25,0.1,0.25,1.0)]"
-                    style={{ width: currentWidth }}
-                />
-            )}
+            {/* 占位元素：始终占据空间，保证内容区左侧有一致的间距 */}
+            <div
+                className="h-screen shrink-0 transition-all duration-300 ease-[cubic-bezier(0.25,0.1,0.25,1.0)]"
+                style={{ width: placeholderWidth }}
+            />
 
             {/* 菜单主体 */}
             <div
@@ -111,36 +112,29 @@ export function SideMenu({ className, weekViewRef }: SideMenuProps) {
             >
                 {/* Header / Toggle Area */}
                 <div className="h-16 flex items-center shrink-0 border-b border-gray-100 px-3">
-                    {/* Logo - 只在展开时显示 */}
+                    {/* 菜单图标 - 始终显示，作为菜单标识 */}
                     <div className={cn(
-                        "font-bold text-lg tracking-tight bg-gradient-to-r from-orange-500 to-orange-600 bg-clip-text text-transparent transition-all duration-300 whitespace-nowrap overflow-hidden",
-                        showExpanded ? "opacity-100 w-auto" : "opacity-0 w-0"
+                        "flex items-center justify-center text-gray-400 transition-all duration-300",
+                        showExpanded ? "" : "mx-auto"
                     )}>
-                        ShowMenu
+                        <Menu className="size-5" />
                     </div>
 
-                    {/* 按钮区域 */}
-                    <div className={cn(
-                        "flex items-center gap-1 transition-all duration-300",
-                        showExpanded ? "ml-auto" : "mx-auto"
-                    )}>
-                        {/* 展开/收起按钮 - 只在固定模式下显示 */}
-                        {isPinned && (
-                            <button
-                                onClick={() => setIsExpanded(!isExpanded)}
-                                className="group flex items-center justify-center w-9 h-9 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-all duration-200"
-                                title={isExpanded ? "收起菜单" : "展开菜单"}
-                            >
-                                {isExpanded ? (
+                    {/* 按钮区域 - 只在展开时显示 */}
+                    {showExpanded && (
+                        <div className="flex items-center gap-1 ml-auto">
+                            {/* 展开/收起按钮 - 只在固定模式下显示 */}
+                            {isPinned && (
+                                <button
+                                    onClick={() => setIsExpanded(!isExpanded)}
+                                    className="group flex items-center justify-center w-9 h-9 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-all duration-200"
+                                    title={isExpanded ? "收起菜单" : "展开菜单"}
+                                >
                                     <PanelLeftClose className="size-4" />
-                                ) : (
-                                    <PanelLeftOpen className="size-4" />
-                                )}
-                            </button>
-                        )}
+                                </button>
+                            )}
 
-                        {/* Pin 按钮 - 只在展开时显示，或者非固定模式下显示 */}
-                        {(showExpanded || !isPinned) && (
+                            {/* Pin 按钮 */}
                             <button
                                 onClick={() => {
                                     setIsPinned(!isPinned);
@@ -163,8 +157,8 @@ export function SideMenu({ className, weekViewRef }: SideMenuProps) {
                                     <PinOff className="size-4" />
                                 )}
                             </button>
-                        )}
-                    </div>
+                        </div>
+                    )}
                 </div>
 
                 {/* Scrollable Content */}
