@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, RefObject } from "react";
 import Link from "next/link";
-import { Settings, Shuffle, ChevronRight, Pin, PinOff, Camera, Loader2, PanelLeftOpen, PanelLeftClose, Menu } from "lucide-react";
+import { Settings, Shuffle, ChevronRight, Pin, PinOff, Camera, Loader2, PanelLeftOpen, PanelLeftClose } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useMenuStore } from "@/store/menuStore";
 import { toPng } from "html-to-image";
@@ -17,9 +17,8 @@ interface SideMenuProps {
 }
 
 export function SideMenu({ className, weekViewRef }: SideMenuProps) {
-    const [isPinned, setIsPinned] = useState(false);
+    const [isPinned, setIsPinned] = useState(false); // 是否固定（占据空间）
     const [isExpanded, setIsExpanded] = useState(false); // 是否展开（宽版）
-    const [isHovered, setIsHovered] = useState(false);
     const [isCapturing, setIsCapturing] = useState(false);
     const generateNewMenu = useMenuStore((state) => state.generateNewMenu);
 
@@ -49,11 +48,6 @@ export function SideMenu({ className, weekViewRef }: SideMenuProps) {
         }
     }, [weekViewRef, isCapturing]);
 
-    // 实际显示宽度的逻辑：
-    // - 非固定模式：hover时展开，否则收窄
-    // - 固定模式：根据 isExpanded 状态决定
-    const showExpanded = isPinned ? isExpanded : isHovered;
-
     const handleKeyDown = useCallback((e: KeyboardEvent) => {
         const target = e.target as HTMLElement;
         if (
@@ -64,33 +58,34 @@ export function SideMenu({ className, weekViewRef }: SideMenuProps) {
             return;
         }
 
+        // F 键切换展开/收起
         if (e.key === "f" || e.key === "F") {
             e.preventDefault();
-            setIsPinned((prev) => !prev);
+            setIsExpanded((prev) => !prev);
         }
 
-        if (e.key === "Escape" && isPinned) {
+        // Escape 键收起菜单
+        if (e.key === "Escape" && isExpanded) {
             e.preventDefault();
-            setIsPinned(false);
+            setIsExpanded(false);
         }
-    }, [isPinned]);
+    }, [isExpanded]);
 
     useEffect(() => {
         document.addEventListener("keydown", handleKeyDown);
         return () => document.removeEventListener("keydown", handleKeyDown);
     }, [handleKeyDown]);
 
-    const handleMouseLeaveMenu = useCallback(() => {
-        if (!isPinned) {
-            setIsHovered(false);
-        }
-    }, [isPinned]);
-
     // 计算当前菜单宽度
-    const currentWidth = showExpanded ? MENU_WIDTH_EXPANDED : MENU_WIDTH_COLLAPSED;
+    const currentWidth = isExpanded ? MENU_WIDTH_EXPANDED : MENU_WIDTH_COLLAPSED;
 
-    // 计算占位宽度：固定模式用当前宽度，非固定模式用窄版宽度（给菜单留空间）
+    // 计算占位宽度：固定模式用当前宽度，非固定模式用窄版宽度
     const placeholderWidth = isPinned ? currentWidth : MENU_WIDTH_COLLAPSED;
+
+    // 点击展开/收起按钮
+    const handleToggleExpand = () => {
+        setIsExpanded(!isExpanded);
+    };
 
     return (
         <>
@@ -107,57 +102,43 @@ export function SideMenu({ className, weekViewRef }: SideMenuProps) {
                     className
                 )}
                 style={{ width: currentWidth }}
-                onMouseEnter={() => !isPinned && setIsHovered(true)}
-                onMouseLeave={handleMouseLeaveMenu}
             >
                 {/* Header / Toggle Area */}
                 <div className="h-16 flex items-center shrink-0 border-b border-gray-100 px-3">
-                    {/* 菜单图标 - 始终显示，作为菜单标识 */}
-                    <div className={cn(
-                        "flex items-center justify-center text-gray-400 transition-all duration-300",
-                        showExpanded ? "" : "mx-auto"
-                    )}>
-                        <Menu className="size-5" />
-                    </div>
+                    {/* 展开/收起按钮 - 始终显示 */}
+                    <button
+                        onClick={handleToggleExpand}
+                        className={cn(
+                            "group flex items-center justify-center w-9 h-9 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-all duration-200",
+                            isExpanded ? "" : "mx-auto"
+                        )}
+                        title={isExpanded ? "收起菜单 (F)" : "展开菜单 (F)"}
+                    >
+                        {isExpanded ? (
+                            <PanelLeftClose className="size-5" />
+                        ) : (
+                            <PanelLeftOpen className="size-5" />
+                        )}
+                    </button>
 
-                    {/* 按钮区域 - 只在展开时显示 */}
-                    {showExpanded && (
-                        <div className="flex items-center gap-1 ml-auto">
-                            {/* 展开/收起按钮 - 只在固定模式下显示 */}
-                            {isPinned && (
-                                <button
-                                    onClick={() => setIsExpanded(!isExpanded)}
-                                    className="group flex items-center justify-center w-9 h-9 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-all duration-200"
-                                    title={isExpanded ? "收起菜单" : "展开菜单"}
-                                >
-                                    <PanelLeftClose className="size-4" />
-                                </button>
+                    {/* Pin 按钮 - 只在展开时显示 */}
+                    {isExpanded && (
+                        <button
+                            onClick={() => setIsPinned(!isPinned)}
+                            className={cn(
+                                "group flex items-center justify-center w-9 h-9 rounded-lg transition-all duration-200 ml-auto",
+                                isPinned
+                                    ? "bg-orange-100 text-orange-600 hover:bg-orange-200"
+                                    : "text-gray-400 hover:text-gray-600 hover:bg-gray-100"
                             )}
-
-                            {/* Pin 按钮 */}
-                            <button
-                                onClick={() => {
-                                    setIsPinned(!isPinned);
-                                    // 固定时默认展开
-                                    if (!isPinned) {
-                                        setIsExpanded(true);
-                                    }
-                                }}
-                                className={cn(
-                                    "group flex items-center justify-center w-9 h-9 rounded-lg transition-all duration-200",
-                                    isPinned
-                                        ? "bg-orange-100 text-orange-600 hover:bg-orange-200"
-                                        : "text-gray-400 hover:text-gray-600 hover:bg-gray-100"
-                                )}
-                                title={isPinned ? "取消固定 (F)" : "固定菜单 (F)"}
-                            >
-                                {isPinned ? (
-                                    <Pin className="size-4" />
-                                ) : (
-                                    <PinOff className="size-4" />
-                                )}
-                            </button>
-                        </div>
+                            title={isPinned ? "取消固定" : "固定菜单（展开时占据空间）"}
+                        >
+                            {isPinned ? (
+                                <Pin className="size-4" />
+                            ) : (
+                                <PinOff className="size-4" />
+                            )}
+                        </button>
                     )}
                 </div>
 
@@ -168,27 +149,27 @@ export function SideMenu({ className, weekViewRef }: SideMenuProps) {
                         onClick={() => generateNewMenu()}
                         className={cn(
                             "relative flex items-center rounded-xl transition-all duration-200 group overflow-hidden bg-gradient-to-br from-orange-50 to-orange-100/50 hover:from-orange-100 hover:to-orange-200/50 border border-orange-200/60",
-                            showExpanded ? "w-full p-3" : "w-12 h-12 justify-center mx-auto"
+                            isExpanded ? "w-full p-3" : "w-12 h-12 justify-center mx-auto"
                         )}
                         title="一键生成下周菜单"
                     >
                         <div className={cn(
                             "flex items-center justify-center text-orange-600 transition-all duration-300",
-                            showExpanded ? "" : "mx-auto"
+                            isExpanded ? "" : "mx-auto"
                         )}>
-                            <Shuffle className={cn("transition-transform", showExpanded ? "size-5" : "size-6")} />
+                            <Shuffle className={cn("transition-transform", isExpanded ? "size-5" : "size-6")} />
                         </div>
 
                         {/* Text - 只在展开时显示 */}
                         <div className={cn(
                             "ml-3 flex flex-col items-start gap-0.5 whitespace-nowrap transition-all duration-300",
-                            showExpanded ? "opacity-100" : "opacity-0 w-0 ml-0 pointer-events-none"
+                            isExpanded ? "opacity-100" : "opacity-0 w-0 ml-0 pointer-events-none"
                         )}>
                             <span className="font-medium text-orange-900/80 text-[15px]">生成下周菜单</span>
                             <span className="text-[10px] text-orange-700/50">随机生成新食谱</span>
                         </div>
 
-                        {showExpanded && (
+                        {isExpanded && (
                             <ChevronRight className="absolute right-3 size-4 text-orange-400/50 group-hover:text-orange-500 transition-colors" />
                         )}
                     </button>
@@ -199,24 +180,24 @@ export function SideMenu({ className, weekViewRef }: SideMenuProps) {
                         disabled={isCapturing || !weekViewRef}
                         className={cn(
                             "relative flex items-center rounded-xl transition-all duration-200 group overflow-hidden bg-gradient-to-br from-blue-50 to-blue-100/50 hover:from-blue-100 hover:to-blue-200/50 border border-blue-200/60 disabled:opacity-50 disabled:cursor-not-allowed",
-                            showExpanded ? "w-full p-3" : "w-12 h-12 justify-center mx-auto"
+                            isExpanded ? "w-full p-3" : "w-12 h-12 justify-center mx-auto"
                         )}
                         title="截图保存菜单"
                     >
                         <div className={cn(
                             "flex items-center justify-center text-blue-600 transition-all duration-300",
-                            showExpanded ? "" : "mx-auto"
+                            isExpanded ? "" : "mx-auto"
                         )}>
                             {isCapturing ? (
-                                <Loader2 className={cn("animate-spin", showExpanded ? "size-5" : "size-6")} />
+                                <Loader2 className={cn("animate-spin", isExpanded ? "size-5" : "size-6")} />
                             ) : (
-                                <Camera className={cn("transition-transform", showExpanded ? "size-5" : "size-6")} />
+                                <Camera className={cn("transition-transform", isExpanded ? "size-5" : "size-6")} />
                             )}
                         </div>
 
                         <div className={cn(
                             "ml-3 flex flex-col items-start gap-0.5 whitespace-nowrap transition-all duration-300",
-                            showExpanded ? "opacity-100" : "opacity-0 w-0 ml-0 pointer-events-none"
+                            isExpanded ? "opacity-100" : "opacity-0 w-0 ml-0 pointer-events-none"
                         )}>
                             <span className="font-medium text-blue-900/80 text-[15px]">
                                 {isCapturing ? '正在截图...' : '截图保存'}
@@ -224,32 +205,32 @@ export function SideMenu({ className, weekViewRef }: SideMenuProps) {
                             <span className="text-[10px] text-blue-700/50">完整菜单高清图片</span>
                         </div>
 
-                        {showExpanded && (
+                        {isExpanded && (
                             <ChevronRight className="absolute right-3 size-4 text-blue-400/50 group-hover:text-blue-500 transition-colors" />
                         )}
                     </button>
 
-                    <div className={cn("h-px bg-gray-100 my-1", showExpanded ? "mx-2" : "mx-1")} />
+                    <div className={cn("h-px bg-gray-100 my-1", isExpanded ? "mx-2" : "mx-1")} />
 
                     {/* Admin Link */}
                     <Link
                         href="/edit"
                         className={cn(
                             "relative flex items-center rounded-xl transition-all duration-200 group overflow-hidden hover:bg-gray-100",
-                            showExpanded ? "w-full p-3" : "w-12 h-12 justify-center mx-auto"
+                            isExpanded ? "w-full p-3" : "w-12 h-12 justify-center mx-auto"
                         )}
                         title="后台管理"
                     >
                         <div className={cn(
                             "flex items-center justify-center text-gray-400 group-hover:text-gray-600 transition-all duration-300",
-                            showExpanded ? "" : "mx-auto"
+                            isExpanded ? "" : "mx-auto"
                         )}>
-                            <Settings className={cn("transition-transform", showExpanded ? "size-5" : "size-6")} />
+                            <Settings className={cn("transition-transform", isExpanded ? "size-5" : "size-6")} />
                         </div>
 
                         <div className={cn(
                             "ml-3 whitespace-nowrap transition-all duration-300",
-                            showExpanded ? "opacity-100" : "opacity-0 w-0 ml-0 pointer-events-none"
+                            isExpanded ? "opacity-100" : "opacity-0 w-0 ml-0 pointer-events-none"
                         )}>
                             <span className="font-medium text-gray-600 text-[15px] group-hover:text-gray-900 transition-colors">后台管理</span>
                         </div>
@@ -260,14 +241,14 @@ export function SideMenu({ className, weekViewRef }: SideMenuProps) {
                 <div className="p-2 border-t border-gray-100 mt-auto">
                     <button className={cn(
                         "flex items-center rounded-lg transition-all duration-200 hover:bg-gray-50",
-                        showExpanded ? "w-full p-2 gap-3" : "w-12 h-12 justify-center mx-auto"
+                        isExpanded ? "w-full p-2 gap-3" : "w-12 h-12 justify-center mx-auto"
                     )}>
                         <div className="size-8 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 shrink-0 flex items-center justify-center text-xs font-bold text-white shadow-sm ring-2 ring-white">
                             Me
                         </div>
                         <div className={cn(
                             "text-left overflow-hidden whitespace-nowrap transition-all duration-300",
-                            showExpanded ? "w-auto opacity-100" : "w-0 opacity-0"
+                            isExpanded ? "w-auto opacity-100" : "w-0 opacity-0"
                         )}>
                             <div className="text-sm font-medium text-gray-700 truncate">Forest</div>
                             <div className="text-xs text-gray-400 truncate">Pro Plan</div>
@@ -276,11 +257,11 @@ export function SideMenu({ className, weekViewRef }: SideMenuProps) {
                 </div>
             </div>
 
-            {/* Content Backdrop - 非固定模式下悬停时的背景遮罩 */}
-            {!isPinned && isHovered && (
+            {/* Content Backdrop - 展开且非固定时的背景遮罩 */}
+            {!isPinned && isExpanded && (
                 <div
                     className="fixed inset-0 bg-black/10 z-40 animate-in fade-in duration-200"
-                    onClick={() => setIsHovered(false)}
+                    onClick={() => setIsExpanded(false)}
                 />
             )}
         </>
