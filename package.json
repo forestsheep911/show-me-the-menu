@@ -2,6 +2,8 @@
   "name": "show-me-the-menu-root",
   "private": true,
   "scripts": {
-    "dev": "pnpm -C web dev"
+    "dev": "pnpm -C web dev",
+    "build": "pnpm -C web build",
+    "start": "pnpm -C web start"
   }
 }

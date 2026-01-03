@@ -24,6 +24,9 @@ export const SOFT_CARD_COLORS = [
   "#F0E68C", // 柠檬黄
 ];
 
+// 卡片数量上限
+export const MAX_CARDS = 10;
+
 // 随机打乱数组并返回前n个不重复的元素
 const shuffleAndPick = <T,>(arr: T[], n: number): T[] => {
   const shuffled = [...arr].sort(() => Math.random() - 0.5);
@@ -63,6 +66,10 @@ interface MenuState {
   toggleDayLock: (dayIndex: number) => void; // 切换锁定状态
   updateDayNote: (dayIndex: number, note: string | undefined) => void; // 更新备注
   setBackgroundColor: (color: string) => void; // 设置背景色
+  // 卡片管理
+  addDayCard: () => void; // 添加新卡片（上限 10）
+  removeDayCard: (dayIndex: number) => void; // 删除卡片
+  updateDayName: (dayIndex: number, name: string) => void; // 更新卡片名称
   // 拖拽相关
   moveDishEntry: (fromDayIndex: number, toDayIndex: number, entryId: string, toIndex: number) => void;
   reorderDishEntries: (dayIndex: number, entryIds: string[]) => void;
@@ -196,6 +203,40 @@ export const useMenuStore = create<MenuState>()(
         }),
 
       setBackgroundColor: (color) => set({ backgroundColor: color }),
+
+      // 添加新卡片
+      addDayCard: () =>
+        set((state) => {
+          if (state.weeklyMenu.length >= MAX_CARDS) return state;
+          const newIndex = state.weeklyMenu.length + 1;
+          const randomColor = SOFT_CARD_COLORS[Math.floor(Math.random() * SOFT_CARD_COLORS.length)];
+          const newDayCard = {
+            day: `卡片${newIndex}`,
+            theme: "",
+            color: randomColor,
+            entries: [],
+          };
+          return { weeklyMenu: [...state.weeklyMenu, newDayCard] };
+        }),
+
+      // 删除卡片
+      removeDayCard: (dayIndex) =>
+        set((state) => {
+          if (state.weeklyMenu.length <= 1) return state; // 至少保留一张卡片
+          const newMenu = state.weeklyMenu.filter((_, index) => index !== dayIndex);
+          return { weeklyMenu: newMenu };
+        }),
+
+      // 更新卡片名称
+      updateDayName: (dayIndex, name) =>
+        set((state) => {
+          const newMenu = [...state.weeklyMenu];
+          newMenu[dayIndex] = {
+            ...newMenu[dayIndex],
+            day: name,
+          };
+          return { weeklyMenu: newMenu };
+        }),
 
       // 将菜品从一天移动到另一天的指定位置
       moveDishEntry: (fromDayIndex, toDayIndex, entryId, toIndex) =>

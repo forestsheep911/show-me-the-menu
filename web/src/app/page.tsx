@@ -10,7 +10,7 @@ export default function Home() {
   return (
     <main className="flex flex-row items-start w-full min-h-screen bg-gray-50/50 relative">
       <SideMenu weekViewRef={weekViewRef} />
-      <div className="flex-1 w-full py-6 pr-6 pl-4">
+      <div className="flex-1 py-6 pl-4 pr-6 overflow-x-auto">
         <div ref={weekViewRef}>
           <WeekView />
         </div>

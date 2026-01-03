@@ -215,7 +215,7 @@ export function WeekView() {
     : undefined;
 
   return (
-    <div className="flex flex-col items-center w-full">
+    <div className="flex flex-col items-start w-full">
       <DndContext
         id="menu-dnd-context"
         sensors={sensors}
@@ -233,7 +233,7 @@ export function WeekView() {
           items={weeklyMenu.map((d: DayMenu) => d.day)}
           strategy={verticalListSortingStrategy}
         >
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-4 w-full px-4 h-full">
+          <div className="flex gap-4 w-max pl-2 pr-4 h-full">
             {weeklyMenu.map((dayMenu: DayMenu, index: number) => (
               <SortableContext
                 key={dayMenu.day}
@@ -243,7 +243,7 @@ export function WeekView() {
                 <DayCard
                   menu={dayMenu}
                   index={index}
-                  className="w-full h-full"
+                  className="w-[280px] shrink-0 h-full"
                   isDropTarget={overDayIndex === index && findDayIndexByEntryId(activeId as string) !== index}
                 />
               </SortableContext>

@@ -2,9 +2,9 @@
 
 import { useState, useEffect, useCallback, RefObject } from "react";
 import Link from "next/link";
-import { Settings, Shuffle, ChevronRight, Pin, PinOff, Camera, Loader2, PanelLeftOpen, PanelLeftClose } from "lucide-react";
+import { Settings, Shuffle, ChevronRight, Camera, Loader2, PanelLeftOpen, PanelLeftClose, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useMenuStore } from "@/store/menuStore";
+import { useMenuStore, MAX_CARDS } from "@/store/menuStore";
 import { toPng } from "html-to-image";
 
 // 菜单宽度常量
@@ -17,10 +17,11 @@ interface SideMenuProps {
 }
 
 export function SideMenu({ className, weekViewRef }: SideMenuProps) {
-    const [isPinned, setIsPinned] = useState(false); // 是否固定（占据空间）
     const [isExpanded, setIsExpanded] = useState(false); // 是否展开（宽版）
     const [isCapturing, setIsCapturing] = useState(false);
     const generateNewMenu = useMenuStore((state) => state.generateNewMenu);
+    const addDayCard = useMenuStore((state) => state.addDayCard);
+    const weeklyMenu = useMenuStore((state) => state.weeklyMenu);
 
     // 截图功能
     const handleCapture = useCallback(async () => {
@@ -79,9 +80,6 @@ export function SideMenu({ className, weekViewRef }: SideMenuProps) {
     // 计算当前菜单宽度
     const currentWidth = isExpanded ? MENU_WIDTH_EXPANDED : MENU_WIDTH_COLLAPSED;
 
-    // 计算占位宽度：固定模式用当前宽度，非固定模式用窄版宽度
-    const placeholderWidth = isPinned ? currentWidth : MENU_WIDTH_COLLAPSED;
-
     // 点击展开/收起按钮
     const handleToggleExpand = () => {
         setIsExpanded(!isExpanded);
@@ -92,7 +90,7 @@ export function SideMenu({ className, weekViewRef }: SideMenuProps) {
             {/* 占位元素：始终占据空间，保证内容区左侧有一致的间距 */}
             <div
                 className="h-screen shrink-0 transition-all duration-300 ease-[cubic-bezier(0.25,0.1,0.25,1.0)]"
-                style={{ width: placeholderWidth }}
+                style={{ width: currentWidth }}
             />
 
             {/* 菜单主体 */}
@@ -120,26 +118,6 @@ export function SideMenu({ className, weekViewRef }: SideMenuProps) {
                             <PanelLeftOpen className="size-5" />
                         )}
                     </button>
-
-                    {/* Pin 按钮 - 只在展开时显示 */}
-                    {isExpanded && (
-                        <button
-                            onClick={() => setIsPinned(!isPinned)}
-                            className={cn(
-                                "group flex items-center justify-center w-9 h-9 rounded-lg transition-all duration-200 ml-auto",
-                                isPinned
-                                    ? "bg-orange-100 text-orange-600 hover:bg-orange-200"
-                                    : "text-gray-400 hover:text-gray-600 hover:bg-gray-100"
-                            )}
-                            title={isPinned ? "取消固定" : "固定菜单（展开时占据空间）"}
-                        >
-                            {isPinned ? (
-                                <Pin className="size-4" />
-                            ) : (
-                                <PinOff className="size-4" />
-                            )}
-                        </button>
-                    )}
                 </div>
 
                 {/* Scrollable Content */}
@@ -210,6 +188,36 @@ export function SideMenu({ className, weekViewRef }: SideMenuProps) {
                         )}
                     </button>
 
+                    {/* Add Card Button */}
+                    <button
+                        onClick={addDayCard}
+                        disabled={weeklyMenu.length >= MAX_CARDS}
+                        className={cn(
+                            "relative flex items-center rounded-xl transition-all duration-200 group overflow-hidden bg-gradient-to-br from-green-50 to-green-100/50 hover:from-green-100 hover:to-green-200/50 border border-green-200/60 disabled:opacity-50 disabled:cursor-not-allowed",
+                            isExpanded ? "w-full p-3" : "w-12 h-12 justify-center mx-auto"
+                        )}
+                        title={weeklyMenu.length >= MAX_CARDS ? `已达上限 (${MAX_CARDS})` : `添加卡片 (${weeklyMenu.length}/${MAX_CARDS})`}
+                    >
+                        <div className={cn(
+                            "flex items-center justify-center text-green-600 transition-all duration-300",
+                            isExpanded ? "" : "mx-auto"
+                        )}>
+                            <Plus className={cn("transition-transform", isExpanded ? "size-5" : "size-6")} />
+                        </div>
+
+                        <div className={cn(
+                            "ml-3 flex flex-col items-start gap-0.5 whitespace-nowrap transition-all duration-300",
+                            isExpanded ? "opacity-100" : "opacity-0 w-0 ml-0 pointer-events-none"
+                        )}>
+                            <span className="font-medium text-green-900/80 text-[15px]">添加卡片</span>
+                            <span className="text-[10px] text-green-700/50">{weeklyMenu.length}/{MAX_CARDS} 张</span>
+                        </div>
+
+                        {isExpanded && (
+                            <ChevronRight className="absolute right-3 size-4 text-green-400/50 group-hover:text-green-500 transition-colors" />
+                        )}
+                    </button>
+
                     <div className={cn("h-px bg-gray-100 my-1", isExpanded ? "mx-2" : "mx-1")} />
 
                     {/* Admin Link */}
@@ -256,14 +264,6 @@ export function SideMenu({ className, weekViewRef }: SideMenuProps) {
                     </button>
                 </div>
             </div>
-
-            {/* Content Backdrop - 展开且非固定时的背景遮罩 */}
-            {!isPinned && isExpanded && (
-                <div
-                    className="fixed inset-0 bg-black/10 z-40 animate-in fade-in duration-200"
-                    onClick={() => setIsExpanded(false)}
-                />
-            )}
         </>
     );
 }

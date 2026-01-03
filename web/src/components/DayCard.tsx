@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 import { useMenuStore, SOFT_CARD_COLORS } from "@/store/menuStore";
 import { DishCard } from "./DishCard";
 import { useDroppable } from "@dnd-kit/core";
-import { Trash2, Lock, Unlock, Plus, NotebookPen } from "lucide-react";
+import { Trash2, Lock, Unlock, Plus, NotebookPen, X, Pencil } from "lucide-react";
 import { HexColorPicker, HexColorInput } from "react-colorful";
 import {
   Dialog,
@@ -55,11 +55,17 @@ export function DayCard({ menu, index, className, isDropTarget = false }: DayCar
   const updateDayColor = useMenuStore((state) => state.updateDayColor);
   const toggleDayLock = useMenuStore((state) => state.toggleDayLock);
   const updateDayNote = useMenuStore((state) => state.updateDayNote);
+  const updateDayName = useMenuStore((state) => state.updateDayName);
+  const removeDayCard = useMenuStore((state) => state.removeDayCard);
+  const weeklyMenu = useMenuStore((state) => state.weeklyMenu);
   const dishes = useMenuStore((state) => state.dishes);
   const tags = useMenuStore((state) => state.tags);
 
   const [colorPickerOpen, setColorPickerOpen] = useState(false);
   const [tempColor, setTempColor] = useState(menu.color);
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [editingName, setEditingName] = useState(menu.day);
+  const nameInputRef = useRef<HTMLInputElement>(null);
 
   // Droppable for the day container (for empty days or dropping at end)
   const { setNodeRef: setDroppableRef, isOver } = useDroppable({
@@ -94,6 +100,32 @@ export function DayCard({ menu, index, className, isDropTarget = false }: DayCar
   const handlePresetClick = (color: string) => {
     setTempColor(color);
     updateDayColor(index, color);
+  };
+
+  const handleNameDoubleClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEditingName(menu.day);
+    setIsEditingName(true);
+    setTimeout(() => nameInputRef.current?.select(), 0);
+  };
+
+  const handleNameBlur = () => {
+    const trimmedName = editingName.trim();
+    if (trimmedName && trimmedName !== menu.day) {
+      updateDayName(index, trimmedName);
+    } else {
+      setEditingName(menu.day);
+    }
+    setIsEditingName(false);
+  };
+
+  const handleNameKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      handleNameBlur();
+    } else if (e.key === "Escape") {
+      setEditingName(menu.day);
+      setIsEditingName(false);
+    }
   };
 
   return (
@@ -145,16 +177,43 @@ export function DayCard({ menu, index, className, isDropTarget = false }: DayCar
             </button>
           </div>
 
-          {/* Center: Title (Color Picker trigger) */}
-          <div
-            className="absolute left-1/2 -translate-x-1/2 text-lg cursor-pointer hover:opacity-80 transition-opacity select-none"
-            onClick={handleHeaderClick}
-            title="点击更换颜色"
-          >
-            {menu.day}
-          </div>
+          {/* Center: Title (Color Picker trigger / Editable) */}
+          {isEditingName ? (
+            <input
+              ref={nameInputRef}
+              type="text"
+              value={editingName}
+              onChange={(e) => setEditingName(e.target.value)}
+              onBlur={handleNameBlur}
+              onKeyDown={handleNameKeyDown}
+              className="absolute left-1/2 -translate-x-1/2 text-lg text-center bg-white/20 rounded px-2 py-0.5 outline-none border border-white/40 focus:border-white text-white font-bold max-w-[140px]"
+              autoFocus
+              onClick={(e) => e.stopPropagation()}
+              onPointerDown={(e) => e.stopPropagation()}
+            />
+          ) : (
+            <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-1">
+              <span
+                className="text-lg cursor-pointer hover:opacity-80 transition-opacity select-none"
+                onClick={handleHeaderClick}
+                title="点击更换颜色"
+              >
+                {menu.day}
+              </span>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleNameDoubleClick(e);
+                }}
+                className="p-1 hover:bg-black/10 rounded-full transition-colors"
+                title="编辑名称"
+              >
+                <Pencil className="size-4 text-white/70 hover:text-white" />
+              </button>
+            </div>
+          )}
 
-          {/* Right: Lock Action */}
+          {/* Right: Lock & Delete Actions */}
           <div className="flex items-center gap-1 z-10">
             <button
               onClick={(e) => {
@@ -170,6 +229,20 @@ export function DayCard({ menu, index, className, isDropTarget = false }: DayCar
                 <Unlock className="size-5 text-white/50 hover:text-white/90" />
               )}
             </button>
+            {weeklyMenu.length > 1 && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (window.confirm(`确定要删除「${menu.day}」吗？`)) {
+                    removeDayCard(index);
+                  }
+                }}
+                className="p-1.5 hover:bg-black/10 rounded-full transition-colors"
+                title="删除卡片"
+              >
+                <X className="size-5 text-white/50 hover:text-white/90" />
+              </button>
+            )}
           </div>
         </div>
 
