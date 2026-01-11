@@ -6,6 +6,8 @@ import { Settings, Shuffle, ChevronRight, Camera, Loader2, PanelLeftOpen, PanelL
 import { cn } from "@/lib/utils";
 import { useMenuStore, MAX_CARDS } from "@/store/menuStore";
 import { toPng } from "html-to-image";
+import { ShimmerButton } from "@/components/ui/shimmer-button";
+import { BlurFade } from "@/components/ui/blur-fade";
 
 // 菜单宽度常量
 const MENU_WIDTH_COLLAPSED = 68; // 窄版：只显示图标
@@ -17,7 +19,7 @@ interface SideMenuProps {
 }
 
 export function SideMenu({ className, weekViewRef }: SideMenuProps) {
-    const [isExpanded, setIsExpanded] = useState(false); // 是否展开（宽版）
+    const [isExpanded, setIsExpanded] = useState(false);
     const [isCapturing, setIsCapturing] = useState(false);
     const generateNewMenu = useMenuStore((state) => state.generateNewMenu);
     const addDayCard = useMenuStore((state) => state.addDayCard);
@@ -87,7 +89,7 @@ export function SideMenu({ className, weekViewRef }: SideMenuProps) {
 
     return (
         <>
-            {/* 占位元素：始终占据空间，保证内容区左侧有一致的间距 */}
+            {/* 占位元素 */}
             <div
                 className="h-screen shrink-0 transition-all duration-300 ease-[cubic-bezier(0.25,0.1,0.25,1.0)]"
                 style={{ width: currentWidth }}
@@ -96,14 +98,13 @@ export function SideMenu({ className, weekViewRef }: SideMenuProps) {
             {/* 菜单主体 */}
             <div
                 className={cn(
-                    "fixed top-0 left-0 h-screen flex flex-col bg-white text-gray-800 transition-all duration-300 ease-[cubic-bezier(0.25,0.1,0.25,1.0)] border-r border-gray-200 shadow-xl overflow-hidden z-50",
+                    "fixed top-0 left-0 h-screen flex flex-col bg-white/95 backdrop-blur-md text-gray-800 transition-all duration-300 ease-[cubic-bezier(0.25,0.1,0.25,1.0)] border-r border-gray-200/80 shadow-xl overflow-hidden z-50",
                     className
                 )}
                 style={{ width: currentWidth }}
             >
                 {/* Header / Toggle Area */}
                 <div className="h-16 flex items-center shrink-0 border-b border-gray-100 px-3">
-                    {/* 展开/收起按钮 - 始终显示 */}
                     <button
                         onClick={handleToggleExpand}
                         className={cn(
@@ -122,146 +123,143 @@ export function SideMenu({ className, weekViewRef }: SideMenuProps) {
 
                 {/* Scrollable Content */}
                 <div className="flex-1 flex flex-col gap-2 p-2 overflow-x-hidden overflow-y-auto">
-                    {/* Generate Menu Button */}
-                    <button
-                        onClick={() => generateNewMenu()}
-                        className={cn(
-                            "relative flex items-center rounded-xl transition-all duration-200 group overflow-hidden bg-gradient-to-br from-orange-50 to-orange-100/50 hover:from-orange-100 hover:to-orange-200/50 border border-orange-200/60",
-                            isExpanded ? "w-full p-3" : "w-12 h-12 justify-center mx-auto"
+                    {/* Generate Menu Button - 使用 ShimmerButton */}
+                    <BlurFade delay={0.05} direction="right">
+                        {isExpanded ? (
+                            <ShimmerButton
+                                onClick={() => generateNewMenu()}
+                                shimmerColor="#fb923c"
+                                shimmerSize="0.08em"
+                                shimmerDuration="2.5s"
+                                borderRadius="12px"
+                                background="linear-gradient(135deg, #f97316 0%, #ea580c 100%)"
+                                className="w-full py-3 px-4 text-sm font-medium"
+                            >
+                                <Shuffle className="size-4 mr-2" />
+                                生成下周菜单
+                            </ShimmerButton>
+                        ) : (
+                            <button
+                                onClick={() => generateNewMenu()}
+                                className="w-12 h-12 mx-auto flex items-center justify-center rounded-xl bg-gradient-to-br from-orange-500 to-orange-600 text-white shadow-lg shadow-orange-500/25 hover:shadow-xl hover:shadow-orange-500/30 hover:scale-105 transition-all duration-200"
+                                title="生成下周菜单"
+                            >
+                                <Shuffle className="size-5" />
+                            </button>
                         )}
-                        title="一键生成下周菜单"
-                    >
-                        <div className={cn(
-                            "flex items-center justify-center text-orange-600 transition-all duration-300",
-                            isExpanded ? "" : "mx-auto"
-                        )}>
-                            <Shuffle className={cn("transition-transform", isExpanded ? "size-5" : "size-6")} />
-                        </div>
-
-                        {/* Text - 只在展开时显示 */}
-                        <div className={cn(
-                            "ml-3 flex flex-col items-start gap-0.5 whitespace-nowrap transition-all duration-300",
-                            isExpanded ? "opacity-100" : "opacity-0 w-0 ml-0 pointer-events-none"
-                        )}>
-                            <span className="font-medium text-orange-900/80 text-[15px]">生成下周菜单</span>
-                            <span className="text-[10px] text-orange-700/50">随机生成新食谱</span>
-                        </div>
-
-                        {isExpanded && (
-                            <ChevronRight className="absolute right-3 size-4 text-orange-400/50 group-hover:text-orange-500 transition-colors" />
-                        )}
-                    </button>
+                    </BlurFade>
 
                     {/* Screenshot Button */}
-                    <button
-                        onClick={handleCapture}
-                        disabled={isCapturing || !weekViewRef}
-                        className={cn(
-                            "relative flex items-center rounded-xl transition-all duration-200 group overflow-hidden bg-gradient-to-br from-blue-50 to-blue-100/50 hover:from-blue-100 hover:to-blue-200/50 border border-blue-200/60 disabled:opacity-50 disabled:cursor-not-allowed",
-                            isExpanded ? "w-full p-3" : "w-12 h-12 justify-center mx-auto"
-                        )}
-                        title="截图保存菜单"
-                    >
-                        <div className={cn(
-                            "flex items-center justify-center text-blue-600 transition-all duration-300",
-                            isExpanded ? "" : "mx-auto"
-                        )}>
-                            {isCapturing ? (
-                                <Loader2 className={cn("animate-spin", isExpanded ? "size-5" : "size-6")} />
-                            ) : (
-                                <Camera className={cn("transition-transform", isExpanded ? "size-5" : "size-6")} />
-                            )}
-                        </div>
-
-                        <div className={cn(
-                            "ml-3 flex flex-col items-start gap-0.5 whitespace-nowrap transition-all duration-300",
-                            isExpanded ? "opacity-100" : "opacity-0 w-0 ml-0 pointer-events-none"
-                        )}>
-                            <span className="font-medium text-blue-900/80 text-[15px]">
+                    <BlurFade delay={0.1} direction="right">
+                        {isExpanded ? (
+                            <ShimmerButton
+                                onClick={handleCapture}
+                                disabled={isCapturing || !weekViewRef}
+                                shimmerColor="#60a5fa"
+                                shimmerSize="0.08em"
+                                shimmerDuration="2.5s"
+                                borderRadius="12px"
+                                background="linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)"
+                                className="w-full py-3 px-4 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                {isCapturing ? (
+                                    <Loader2 className="size-4 mr-2 animate-spin" />
+                                ) : (
+                                    <Camera className="size-4 mr-2" />
+                                )}
                                 {isCapturing ? '正在截图...' : '截图保存'}
-                            </span>
-                            <span className="text-[10px] text-blue-700/50">完整菜单高清图片</span>
-                        </div>
-
-                        {isExpanded && (
-                            <ChevronRight className="absolute right-3 size-4 text-blue-400/50 group-hover:text-blue-500 transition-colors" />
+                            </ShimmerButton>
+                        ) : (
+                            <button
+                                onClick={handleCapture}
+                                disabled={isCapturing || !weekViewRef}
+                                className="w-12 h-12 mx-auto flex items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-lg shadow-blue-500/25 hover:shadow-xl hover:shadow-blue-500/30 hover:scale-105 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+                                title="截图保存"
+                            >
+                                {isCapturing ? (
+                                    <Loader2 className="size-5 animate-spin" />
+                                ) : (
+                                    <Camera className="size-5" />
+                                )}
+                            </button>
                         )}
-                    </button>
+                    </BlurFade>
 
                     {/* Add Card Button */}
-                    <button
-                        onClick={addDayCard}
-                        disabled={weeklyMenu.length >= MAX_CARDS}
-                        className={cn(
-                            "relative flex items-center rounded-xl transition-all duration-200 group overflow-hidden bg-gradient-to-br from-green-50 to-green-100/50 hover:from-green-100 hover:to-green-200/50 border border-green-200/60 disabled:opacity-50 disabled:cursor-not-allowed",
-                            isExpanded ? "w-full p-3" : "w-12 h-12 justify-center mx-auto"
+                    <BlurFade delay={0.15} direction="right">
+                        {isExpanded ? (
+                            <ShimmerButton
+                                onClick={addDayCard}
+                                disabled={weeklyMenu.length >= MAX_CARDS}
+                                shimmerColor="#4ade80"
+                                shimmerSize="0.08em"
+                                shimmerDuration="2.5s"
+                                borderRadius="12px"
+                                background="linear-gradient(135deg, #22c55e 0%, #16a34a 100%)"
+                                className="w-full py-3 px-4 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                <Plus className="size-4 mr-2" />
+                                添加卡片 ({weeklyMenu.length}/{MAX_CARDS})
+                            </ShimmerButton>
+                        ) : (
+                            <button
+                                onClick={addDayCard}
+                                disabled={weeklyMenu.length >= MAX_CARDS}
+                                className="w-12 h-12 mx-auto flex items-center justify-center rounded-xl bg-gradient-to-br from-green-500 to-green-600 text-white shadow-lg shadow-green-500/25 hover:shadow-xl hover:shadow-green-500/30 hover:scale-105 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+                                title={weeklyMenu.length >= MAX_CARDS ? `已达上限 (${MAX_CARDS})` : `添加卡片 (${weeklyMenu.length}/${MAX_CARDS})`}
+                            >
+                                <Plus className="size-5" />
+                            </button>
                         )}
-                        title={weeklyMenu.length >= MAX_CARDS ? `已达上限 (${MAX_CARDS})` : `添加卡片 (${weeklyMenu.length}/${MAX_CARDS})`}
-                    >
-                        <div className={cn(
-                            "flex items-center justify-center text-green-600 transition-all duration-300",
-                            isExpanded ? "" : "mx-auto"
-                        )}>
-                            <Plus className={cn("transition-transform", isExpanded ? "size-5" : "size-6")} />
-                        </div>
-
-                        <div className={cn(
-                            "ml-3 flex flex-col items-start gap-0.5 whitespace-nowrap transition-all duration-300",
-                            isExpanded ? "opacity-100" : "opacity-0 w-0 ml-0 pointer-events-none"
-                        )}>
-                            <span className="font-medium text-green-900/80 text-[15px]">添加卡片</span>
-                            <span className="text-[10px] text-green-700/50">{weeklyMenu.length}/{MAX_CARDS} 张</span>
-                        </div>
-
-                        {isExpanded && (
-                            <ChevronRight className="absolute right-3 size-4 text-green-400/50 group-hover:text-green-500 transition-colors" />
-                        )}
-                    </button>
+                    </BlurFade>
 
                     <div className={cn("h-px bg-gray-100 my-1", isExpanded ? "mx-2" : "mx-1")} />
 
                     {/* Admin Link */}
-                    <Link
-                        href="/edit"
-                        className={cn(
-                            "relative flex items-center rounded-xl transition-all duration-200 group overflow-hidden hover:bg-gray-100",
-                            isExpanded ? "w-full p-3" : "w-12 h-12 justify-center mx-auto"
-                        )}
-                        title="后台管理"
-                    >
-                        <div className={cn(
-                            "flex items-center justify-center text-gray-400 group-hover:text-gray-600 transition-all duration-300",
-                            isExpanded ? "" : "mx-auto"
-                        )}>
-                            <Settings className={cn("transition-transform", isExpanded ? "size-5" : "size-6")} />
-                        </div>
+                    <BlurFade delay={0.2} direction="right">
+                        <Link
+                            href="/edit"
+                            className={cn(
+                                "relative flex items-center rounded-xl transition-all duration-200 group overflow-hidden hover:bg-gray-100",
+                                isExpanded ? "w-full p-3" : "w-12 h-12 justify-center mx-auto"
+                            )}
+                            title="后台管理"
+                        >
+                            <div className={cn(
+                                "flex items-center justify-center text-gray-400 group-hover:text-gray-600 transition-all duration-300",
+                                isExpanded ? "" : "mx-auto"
+                            )}>
+                                <Settings className={cn("transition-transform group-hover:rotate-45", isExpanded ? "size-5" : "size-6")} />
+                            </div>
 
-                        <div className={cn(
-                            "ml-3 whitespace-nowrap transition-all duration-300",
-                            isExpanded ? "opacity-100" : "opacity-0 w-0 ml-0 pointer-events-none"
-                        )}>
-                            <span className="font-medium text-gray-600 text-[15px] group-hover:text-gray-900 transition-colors">后台管理</span>
-                        </div>
-                    </Link>
+                            {isExpanded && (
+                                <div className="ml-3 flex items-center justify-between flex-1">
+                                    <span className="font-medium text-gray-600 text-[15px] group-hover:text-gray-900 transition-colors">后台管理</span>
+                                    <ChevronRight className="size-4 text-gray-300 group-hover:text-gray-500 group-hover:translate-x-1 transition-all" />
+                                </div>
+                            )}
+                        </Link>
+                    </BlurFade>
                 </div>
 
                 {/* Footer User/Profile Area */}
                 <div className="p-2 border-t border-gray-100 mt-auto">
-                    <button className={cn(
-                        "flex items-center rounded-lg transition-all duration-200 hover:bg-gray-50",
-                        isExpanded ? "w-full p-2 gap-3" : "w-12 h-12 justify-center mx-auto"
-                    )}>
-                        <div className="size-8 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 shrink-0 flex items-center justify-center text-xs font-bold text-white shadow-sm ring-2 ring-white">
-                            Me
-                        </div>
-                        <div className={cn(
-                            "text-left overflow-hidden whitespace-nowrap transition-all duration-300",
-                            isExpanded ? "w-auto opacity-100" : "w-0 opacity-0"
+                    <BlurFade delay={0.25} direction="up">
+                        <button className={cn(
+                            "flex items-center rounded-lg transition-all duration-200 hover:bg-gray-50",
+                            isExpanded ? "w-full p-2 gap-3" : "w-12 h-12 justify-center mx-auto"
                         )}>
-                            <div className="text-sm font-medium text-gray-700 truncate">Forest</div>
-                            <div className="text-xs text-gray-400 truncate">Pro Plan</div>
-                        </div>
-                    </button>
+                            <div className="size-8 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 shrink-0 flex items-center justify-center text-xs font-bold text-white shadow-sm ring-2 ring-white">
+                                Me
+                            </div>
+                            {isExpanded && (
+                                <div className="text-left overflow-hidden whitespace-nowrap">
+                                    <div className="text-sm font-medium text-gray-700 truncate">Forest</div>
+                                    <div className="text-xs text-gray-400 truncate">Pro Plan</div>
+                                </div>
+                            )}
+                        </button>
+                    </BlurFade>
                 </div>
             </div>
         </>
