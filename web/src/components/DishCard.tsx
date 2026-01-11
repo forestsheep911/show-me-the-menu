@@ -105,7 +105,7 @@ export function DishCard({
                 )}
             >
                 <div className="flex items-start justify-between gap-3 mb-2">
-                    <div className="flex-1 min-w-0" onPointerDown={(e) => e.stopPropagation()}>
+                    <div className="flex-1 min-w-0">
                         <DishSelector
                             entryTags={entry.tags}
                             currentDish={entry.dishName || "点击选择菜品"}

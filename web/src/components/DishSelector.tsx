@@ -75,7 +75,7 @@ export function DishSelector({ entryTags, currentDish, onSelect, trigger }: Dish
     <Dialog open={open} onOpenChange={handleDialogChange}>
       <DialogTrigger asChild>
         {trigger || (
-          <button className="text-2xl font-semibold text-gray-900 hover:text-[#ff7043] hover:underline cursor-pointer transition-colors text-left w-full py-1 leading-tight">
+          <button className="text-2xl font-semibold text-gray-900 hover:text-[#ff7043] hover:bg-orange-50/50 cursor-pointer transition-all text-left w-full py-1 px-1 -mx-1 rounded-md leading-tight">
             {currentDish || "点击选择菜品"}
           </button>
         )}
