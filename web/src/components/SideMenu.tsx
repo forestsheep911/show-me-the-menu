@@ -233,9 +233,9 @@ export function SideMenu({ className, weekViewRef }: SideMenuProps) {
                             </div>
 
                             {isExpanded && (
-                                <div className="ml-3 flex items-center justify-between flex-1">
+                                <div className="ml-3 flex items-center justify-between flex-1 whitespace-nowrap overflow-hidden">
                                     <span className="font-medium text-gray-600 text-[15px] group-hover:text-gray-900 transition-colors">后台管理</span>
-                                    <ChevronRight className="size-4 text-gray-300 group-hover:text-gray-500 group-hover:translate-x-1 transition-all" />
+                                    <ChevronRight className="size-4 text-gray-300 group-hover:text-gray-500 group-hover:translate-x-1 transition-all shrink-0" />
                                 </div>
                             )}
                         </Link>
