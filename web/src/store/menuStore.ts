@@ -64,6 +64,8 @@ interface MenuState {
   generateNewMenu: () => void;
   updateEntryDish: (dayIndex: number, entryId: string, dishName: string) => void;
   addMenuEntry: (dayIndex: number, tags?: string[]) => void;
+  duplicateMenuEntry: (dayIndex: number, entryId: string) => void;
+  randomizeMenuEntry: (dayIndex: number, entryId: string) => void;
   removeMenuEntry: (dayIndex: number, entryId: string) => void;
   updateDayColor: (dayIndex: number, color: string) => void; // 更新单天卡片颜色
   toggleDayLock: (dayIndex: number) => void; // 切换锁定状态
@@ -162,6 +164,62 @@ export const useMenuStore = create<MenuState>()(
           newMenu[dayIndex] = {
             ...newMenu[dayIndex],
             entries: [...newMenu[dayIndex].entries, newEntry],
+          };
+          return { weeklyMenu: newMenu };
+        }),
+
+      duplicateMenuEntry: (dayIndex, entryId) =>
+        set((state) => {
+          const newMenu = [...state.weeklyMenu];
+          const day = newMenu[dayIndex];
+          const entryIndex = day.entries.findIndex((e) => e.id === entryId);
+
+          if (entryIndex === -1) return state;
+
+          const originalEntry = day.entries[entryIndex];
+          const newEntry: MenuEntry = {
+            ...originalEntry,
+            id: createEntryId(), // 生成新 ID
+            // 其他属性如 dishName, tags 保持一致
+          };
+
+          const newEntries = [...day.entries];
+          // 在原条目之后插入
+          newEntries.splice(entryIndex + 1, 0, newEntry);
+
+          newMenu[dayIndex] = {
+            ...day,
+            entries: newEntries,
+          };
+          return { weeklyMenu: newMenu };
+        }),
+
+      randomizeMenuEntry: (dayIndex, entryId) =>
+        set((state) => {
+          const newMenu = [...state.weeklyMenu];
+          const day = newMenu[dayIndex];
+          const entry = day.entries.find((e) => e.id === entryId);
+
+          if (!entry) return state;
+
+          // 筛选符合 tags 的菜品
+          const candidates = filterDishesByTags(state.dishes, entry.tags);
+
+          if (candidates.length === 0) return state;
+
+          // 尽量选一个不一样的新菜
+          let available = candidates;
+          if (candidates.length > 1) {
+            available = candidates.filter(d => d.name !== entry.dishName);
+          }
+
+          const newDish = getRandomItem(available);
+
+          newMenu[dayIndex] = {
+            ...day,
+            entries: day.entries.map((e) =>
+              e.id === entryId ? { ...e, dishName: newDish.name } : e
+            ),
           };
           return { weeklyMenu: newMenu };
         }),

@@ -22,6 +22,7 @@ interface DishCardProps {
     onUpdateDish: (dishName: string) => void;
     onRemove: () => void;
     onDuplicate?: () => void;
+    onRandomize?: () => void;
     isDragOverlay?: boolean;
 }
 
@@ -33,6 +34,7 @@ export function DishCard({
     onUpdateDish,
     onRemove,
     onDuplicate,
+    onRandomize,
     isDragOverlay = false,
 }: DishCardProps) {
     const {
@@ -165,7 +167,7 @@ export function DishCard({
                 </ContextMenuItem>
                 <ContextMenuItem
                     onClick={() => {
-                        // TODO: 实现随机换一个功能
+                        onRandomize?.();
                     }}
                 >
                     <RefreshCw className="size-4" />

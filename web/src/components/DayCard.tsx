@@ -51,6 +51,8 @@ interface DayCardProps {
 export function DayCard({ menu, index, className, isDropTarget = false }: DayCardProps) {
   const updateEntryDish = useMenuStore((state) => state.updateEntryDish);
   const addMenuEntry = useMenuStore((state) => state.addMenuEntry);
+  const duplicateMenuEntry = useMenuStore((state) => state.duplicateMenuEntry);
+  const randomizeMenuEntry = useMenuStore((state) => state.randomizeMenuEntry);
   const removeMenuEntry = useMenuStore((state) => state.removeMenuEntry);
   const updateDayColor = useMenuStore((state) => state.updateDayColor);
   const toggleDayLock = useMenuStore((state) => state.toggleDayLock);
@@ -266,6 +268,8 @@ export function DayCard({ menu, index, className, isDropTarget = false }: DayCar
                 tags={tags}
                 onUpdateDish={(newDish) => updateEntryDish(index, entry.id, newDish)}
                 onRemove={() => removeMenuEntry(index, entry.id)}
+                onDuplicate={() => duplicateMenuEntry(index, entry.id)}
+                onRandomize={() => randomizeMenuEntry(index, entry.id)}
               />
             );
           })}
