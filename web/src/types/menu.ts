@@ -16,6 +16,7 @@ export interface Dish {
   mainIngredients: string[];  // 主料
   subIngredients: string[];   // 辅料
   steps: string;              // 做法步骤
+  lastUsedAt?: number;        // 最近使用时间戳（毫秒）
 }
 
 // Notion 10 色

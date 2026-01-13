@@ -80,6 +80,7 @@ interface MenuState {
   addDish: (dishName: string, tags?: string[], mainIngredients?: string[], subIngredients?: string[], steps?: string) => void;
   removeDish: (dishName: string) => void;
   updateDish: (oldName: string, updates: Partial<Dish>) => void;
+  markDishUsed: (dishName: string) => void;  // 标记菜品为最近使用
 
   addTag: (name: string, color?: string) => void;
   removeTag: (tagName: string) => void;
@@ -298,8 +299,20 @@ export const useMenuStore = create<MenuState>()(
               mainIngredients,
               subIngredients,
               steps,
+              lastUsedAt: Date.now(),  // 新建菜品时设置使用时间
             }],
           };
+        }),
+
+      // 标记菜品为最近使用
+      markDishUsed: (dishName) =>
+        set((state) => {
+          const updatedDishes = state.dishes.map((dish) =>
+            dish.name === dishName
+              ? { ...dish, lastUsedAt: Date.now() }
+              : dish
+          );
+          return { dishes: updatedDishes };
         }),
 
       removeDish: (dishName) =>

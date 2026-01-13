@@ -22,10 +22,11 @@ export function DishSelector({ entryTags, currentDish, onSelect, trigger }: Dish
   const dishes = useMenuStore((state: { dishes: Dish[] }) => state.dishes);
   const availableTags = useMenuStore((state: { tags: Tag[] }) => state.tags);
   const addDish = useMenuStore((state: { addDish: (name: string, tags?: string[], mainIngredients?: string[], subIngredients?: string[], steps?: string) => void }) => state.addDish);
+  const markDishUsed = useMenuStore((state: { markDishUsed: (name: string) => void }) => state.markDishUsed);
 
   const normalizedQuery = searchQuery.trim().toLowerCase();
 
-  // 先按搜索词筛选，再按标签筛选
+  // 先按搜索词筛选，再按标签筛选，最后按使用时间排序
   const filteredDishes = useMemo(() => {
     let result = dishes;
 
@@ -41,6 +42,13 @@ export function DishSelector({ entryTags, currentDish, onSelect, trigger }: Dish
       );
     }
 
+    // 按最近使用时间排序（最近使用的在前面）
+    result = [...result].sort((a, b) => {
+      const timeA = a.lastUsedAt ?? 0;
+      const timeB = b.lastUsedAt ?? 0;
+      return timeB - timeA;  // 降序：时间大的（最近的）在前
+    });
+
     return result;
   }, [dishes, normalizedQuery, selectedTags]);
 
@@ -55,6 +63,7 @@ export function DishSelector({ entryTags, currentDish, onSelect, trigger }: Dish
   const showCreateOption = trimmedQuery && !hasExactMatch;
 
   const handleSelect = (dish: string) => {
+    markDishUsed(dish);  // 记录使用时间
     onSelect(dish);
     setSearchQuery("");
     setSelectedTags([]);
@@ -65,9 +74,8 @@ export function DishSelector({ entryTags, currentDish, onSelect, trigger }: Dish
     if (!trimmedQuery || hasExactMatch) return;
     // 使用用户选择的标签，如果没有选择则创建空标签菜品
     addDish(trimmedQuery, selectedTags);
-    // 创建后不关闭对话框，清空输入让用户可以继续创建
-    setSearchQuery("");
-    setSelectedTags([]);
+    // 创建后直接选用新创建的菜品
+    handleSelect(trimmedQuery);
   };
 
   const handleDialogChange = (nextOpen: boolean) => {
@@ -145,14 +153,14 @@ export function DishSelector({ entryTags, currentDish, onSelect, trigger }: Dish
             </div>
           </div>
         </div>
-        <ScrollArea className="mt-4 h-[420px] w-full rounded-md border p-4">
-          <div className="grid grid-cols-3 gap-3">
+        <ScrollArea className="mt-3 h-[400px] w-full rounded-md border p-2">
+          <div className="grid grid-cols-4 gap-1.5">
             {/* 创建新菜品选项 - Notion 风格，带标签选择 */}
             {showCreateOption && (
-              <div className="col-span-3 rounded-lg border-2 border-dashed border-[#ff7043]/30 bg-[#ff7043]/5 p-4 space-y-3">
+              <div className="col-span-4 rounded-lg border-2 border-dashed border-[#ff7043]/30 bg-[#ff7043]/5 p-3 space-y-2">
                 <button
                   onClick={handleAddDish}
-                  className="w-full flex items-center gap-2 px-4 py-2.5 rounded-lg bg-[#ff7043]/10 hover:bg-[#ff7043]/20 transition-all"
+                  className="w-full flex items-center gap-2 px-3 py-2 rounded-lg bg-[#ff7043]/10 hover:bg-[#ff7043]/20 transition-all"
                 >
                   <Plus className="w-4 h-4 text-[#ff7043]" />
                   <span className="text-sm text-gray-600">创建</span>
@@ -195,14 +203,14 @@ export function DishSelector({ entryTags, currentDish, onSelect, trigger }: Dish
                 key={dish.name}
                 variant={currentDish === dish.name ? "secondary" : "ghost"}
                 className={cn(
-                  "justify-start h-auto py-3 px-4 flex flex-col items-start gap-1",
+                  "justify-start h-auto py-2 px-2.5 flex flex-col items-start gap-0.5 text-left",
                   currentDish === dish.name && "bg-[#ffcc80]/20 text-[#ff7043] hover:bg-[#ffcc80]/30"
                 )}
                 onClick={() => handleSelect(dish.name)}
               >
-                <span>{dish.name}</span>
+                <span className="text-sm leading-tight">{dish.name}</span>
                 {dish.tags.length > 0 && (
-                  <span className="text-xs text-gray-400">
+                  <span className="text-[10px] text-gray-400 leading-tight">
                     {dish.tags.join(" / ")}
                   </span>
                 )}
