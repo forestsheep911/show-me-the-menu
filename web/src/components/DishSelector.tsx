@@ -103,7 +103,7 @@ export function DishSelector({ entryTags, currentDish, onSelect, trigger }: Dish
           </button>
         )}
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[820px]">
+      <DialogContent className="w-[95vw] max-w-[820px] max-h-[90vh] overflow-hidden">
         <DialogHeader>
           <DialogTitle>替换菜品</DialogTitle>
         </DialogHeader>
@@ -153,11 +153,14 @@ export function DishSelector({ entryTags, currentDish, onSelect, trigger }: Dish
             </div>
           </div>
         </div>
-        <ScrollArea className="mt-3 h-[400px] w-full rounded-md border p-2">
-          <div className="grid grid-cols-4 gap-1.5">
+        <ScrollArea className="mt-3 h-[50vh] max-h-[400px] w-full rounded-md border p-2">
+          <div
+            className="grid gap-1.5"
+            style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))' }}
+          >
             {/* 创建新菜品选项 - Notion 风格，带标签选择 */}
             {showCreateOption && (
-              <div className="col-span-4 rounded-lg border-2 border-dashed border-[#ff7043]/30 bg-[#ff7043]/5 p-3 space-y-2">
+              <div className="rounded-lg border-2 border-dashed border-[#ff7043]/30 bg-[#ff7043]/5 p-3 space-y-2" style={{ gridColumn: '1 / -1' }}>
                 <button
                   onClick={handleAddDish}
                   className="w-full flex items-center gap-2 px-3 py-2 rounded-lg bg-[#ff7043]/10 hover:bg-[#ff7043]/20 transition-all"
