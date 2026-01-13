@@ -55,7 +55,10 @@ interface MenuState {
   dishes: Dish[];
   tags: Tag[];
   ingredients: Ingredient[];
-  backgroundColor: string; // 主页背景色
+  backgroundSettings: {
+    type: 'dots' | 'grid' | 'solid' | 'none';
+    color: string;
+  };
 
   setWeeklyMenu: (menu: WeeklyMenu) => void;
   generateNewMenu: () => void;
@@ -65,7 +68,7 @@ interface MenuState {
   updateDayColor: (dayIndex: number, color: string) => void; // 更新单天卡片颜色
   toggleDayLock: (dayIndex: number) => void; // 切换锁定状态
   updateDayNote: (dayIndex: number, note: string | undefined) => void; // 更新备注
-  setBackgroundColor: (color: string) => void; // 设置背景色
+  setBackgroundSettings: (settings: { type?: 'dots' | 'grid' | 'solid' | 'none'; color?: string }) => void;
   // 卡片管理
   addDayCard: () => void; // 添加新卡片（上限 10）
   removeDayCard: (dayIndex: number) => void; // 删除卡片
@@ -97,7 +100,7 @@ export const useMenuStore = create<MenuState>()(
       dishes: defaultDishes,
       tags: defaultDishTags,
       ingredients: initialIngredients,
-      backgroundColor: "#b2ebf2", // 默认背景色（青绿色点点）
+      backgroundSettings: { type: 'dots', color: '#67e8f9' }, // 默认：圆点背景，青色
 
       setWeeklyMenu: (menu) => set({ weeklyMenu: menu }),
 
@@ -202,7 +205,9 @@ export const useMenuStore = create<MenuState>()(
           return { weeklyMenu: newMenu };
         }),
 
-      setBackgroundColor: (color) => set({ backgroundColor: color }),
+      setBackgroundSettings: (settings) => set((state) => ({
+        backgroundSettings: { ...state.backgroundSettings, ...settings }
+      })),
 
       // 添加新卡片
       addDayCard: () =>
@@ -459,7 +464,7 @@ export const useMenuStore = create<MenuState>()(
         weeklyMenu: state.weeklyMenu,
         ingredients: state.ingredients,
         tags: state.tags,
-        backgroundColor: state.backgroundColor,
+        backgroundSettings: state.backgroundSettings,
       }),
       // 数据迁移：确保从 localStorage 恢复的旧数据结构兼容
       merge: (persistedState, currentState) => {
@@ -544,11 +549,23 @@ export const useMenuStore = create<MenuState>()(
           }
         }
 
-        // 迁移 backgroundColor
-        const migratedBackgroundColor =
-          typeof persisted.backgroundColor === "string"
-            ? persisted.backgroundColor
-            : currentState.backgroundColor;
+        // 迁移 backgroundSettings（兼容旧版 backgroundColor 字符串格式）
+        let migratedBackgroundSettings = currentState.backgroundSettings;
+        const persistedBgSettings = persisted.backgroundSettings as { type?: string; color?: string } | undefined;
+        const persistedBgColor = persisted.backgroundColor as string | undefined;
+
+        if (persistedBgSettings && typeof persistedBgSettings === 'object') {
+          migratedBackgroundSettings = {
+            type: (persistedBgSettings.type as 'dots' | 'grid' | 'solid' | 'none') ?? 'dots',
+            color: persistedBgSettings.color ?? '#67e8f9',
+          };
+        } else if (typeof persistedBgColor === 'string') {
+          // 旧版本只有颜色，默认使用 dots 类型
+          migratedBackgroundSettings = {
+            type: 'dots',
+            color: persistedBgColor,
+          };
+        }
 
         return {
           ...currentState,
@@ -556,7 +573,7 @@ export const useMenuStore = create<MenuState>()(
           dishes: migratedDishes,
           tags: migratedTags,
           ingredients: migratedIngredients,
-          backgroundColor: migratedBackgroundColor,
+          backgroundSettings: migratedBackgroundSettings,
         };
       },
     }

@@ -1,32 +1,31 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowLeft, ChevronRight, Carrot, UtensilsCrossed } from "lucide-react";
+import { ArrowLeft, ChevronRight, Carrot, UtensilsCrossed, Palette, Grid3X3, CircleDot, Square, X } from "lucide-react";
 import { useMenuStore } from "@/store/menuStore";
 import { Button } from "@/components/ui/button";
 import { MagicCard } from "@/components/ui/magic-card";
 import { BlurFade } from "@/components/ui/blur-fade";
-import { DotPattern } from "@/components/ui/dot-pattern";
+import { DynamicBackground, BACKGROUND_PRESETS } from "@/components/DynamicBackground";
 import { cn } from "@/lib/utils";
 
 export default function EditMenuPage() {
-  const { dishes, ingredients } = useMenuStore();
+  const { dishes, ingredients, backgroundSettings, setBackgroundSettings } = useMenuStore();
+
+  const getTypeIcon = (type: string) => {
+    switch (type) {
+      case 'dots': return <CircleDot className="size-4" />;
+      case 'grid': return <Grid3X3 className="size-4" />;
+      case 'solid': return <Square className="size-4" />;
+      case 'none': return <X className="size-4" />;
+      default: return null;
+    }
+  };
 
   return (
     <main className="flex flex-col w-full min-h-screen bg-gray-50 relative">
-      {/* 背景圆点图案 */}
-      <DotPattern
-        width={20}
-        height={20}
-        cx={1}
-        cy={1}
-        cr={1}
-        className={cn(
-          "fixed inset-0 z-0",
-          "text-gray-200",
-          "[mask-image:radial-gradient(ellipse_at_center,white_10%,transparent_70%)]"
-        )}
-      />
+      {/* 动态背景 */}
+      <DynamicBackground />
 
       {/* Header */}
       <header className="sticky top-0 z-20 bg-white/80 backdrop-blur-md border-b p-4 shadow-sm">
@@ -104,6 +103,72 @@ export default function EditMenuPage() {
               </Link>
             </BlurFade>
           </div>
+        </section>
+
+        {/* 外观设置 */}
+        <section>
+          <BlurFade delay={0.25} direction="up">
+            <h2 className="text-sm font-bold uppercase tracking-wider text-gray-400 mb-4 pl-1 flex items-center gap-2">
+              <Palette className="size-4" />
+              背景设置
+            </h2>
+          </BlurFade>
+          <BlurFade delay={0.3} direction="up">
+            <div className="bg-white rounded-xl border shadow-sm p-6">
+              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3">
+                {BACKGROUND_PRESETS.map((preset, index) => {
+                  const isActive = backgroundSettings.type === preset.type &&
+                    (preset.type === 'none' || backgroundSettings.color === preset.color);
+
+                  return (
+                    <button
+                      key={`${preset.type}-${preset.color}-${index}`}
+                      onClick={() => setBackgroundSettings({ type: preset.type, color: preset.color })}
+                      className={cn(
+                        "relative flex flex-col items-center gap-2 p-3 rounded-lg border-2 transition-all hover:scale-105",
+                        isActive
+                          ? "border-blue-500 bg-blue-50 shadow-md"
+                          : "border-gray-200 hover:border-gray-300"
+                      )}
+                    >
+                      {/* 预览 */}
+                      <div
+                        className={cn(
+                          "w-10 h-10 rounded-lg flex items-center justify-center",
+                          preset.type === 'none' ? "bg-gray-100" : ""
+                        )}
+                        style={
+                          preset.type === 'solid'
+                            ? { backgroundColor: preset.color }
+                            : preset.type !== 'none'
+                              ? {
+                                backgroundColor: '#f9fafb',
+                                backgroundImage: preset.type === 'dots'
+                                  ? `radial-gradient(${preset.color} 1.5px, transparent 1.5px)`
+                                  : `linear-gradient(${preset.color} 1px, transparent 1px), linear-gradient(90deg, ${preset.color} 1px, transparent 1px)`,
+                                backgroundSize: preset.type === 'dots' ? '8px 8px' : '8px 8px'
+                              }
+                              : undefined
+                        }
+                      >
+                        {preset.type === 'none' && <X className="size-5 text-gray-400" />}
+                      </div>
+                      {/* 名称 */}
+                      <span className="text-xs text-gray-600 text-center leading-tight">{preset.name}</span>
+                      {/* 选中指示 */}
+                      {isActive && (
+                        <div className="absolute -top-1 -right-1 w-4 h-4 bg-blue-500 rounded-full flex items-center justify-center">
+                          <svg className="w-2.5 h-2.5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                          </svg>
+                        </div>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </BlurFade>
         </section>
       </div>
     </main>
