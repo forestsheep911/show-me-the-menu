@@ -24,10 +24,25 @@ export function DishSelector({ entryTags, currentDish, onSelect, trigger }: Dish
   const addDish = useMenuStore((state: { addDish: (name: string, tags?: string[], mainIngredients?: string[], subIngredients?: string[], steps?: string) => void }) => state.addDish);
 
   const normalizedQuery = searchQuery.trim().toLowerCase();
+
+  // 先按搜索词筛选，再按标签筛选
   const filteredDishes = useMemo(() => {
-    if (!normalizedQuery) return dishes;
-    return dishes.filter((dish: Dish) => matchesSearch(dish.name, normalizedQuery));
-  }, [dishes, normalizedQuery]);
+    let result = dishes;
+
+    // 按搜索词筛选
+    if (normalizedQuery) {
+      result = result.filter((dish: Dish) => matchesSearch(dish.name, normalizedQuery));
+    }
+
+    // 按标签筛选（逻辑与：必须匹配所有选中的标签）
+    if (selectedTags.length > 0) {
+      result = result.filter((dish: Dish) =>
+        selectedTags.every(tag => dish.tags.includes(tag))
+      );
+    }
+
+    return result;
+  }, [dishes, normalizedQuery, selectedTags]);
 
   // 检查是否有精确匹配（菜品名称完全相同）
   const trimmedQuery = searchQuery.trim();
@@ -99,6 +114,35 @@ export function DishSelector({ entryTags, currentDish, onSelect, trigger }: Dish
               }}
               className="w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm focus:border-[#ff7043] focus:outline-none focus:ring-2 focus:ring-[#ffcc80]/50"
             />
+            {/* 标签筛选区域 */}
+            <div className="flex flex-wrap gap-1.5 pt-1">
+              {availableTags.map((tag: Tag) => {
+                const isSelected = selectedTags.includes(tag.name);
+                return (
+                  <button
+                    key={tag.name}
+                    onClick={() => toggleTag(tag.name)}
+                    className={cn(
+                      "px-2.5 py-1 text-xs rounded-full border transition-all",
+                      isSelected
+                        ? "border-transparent text-white shadow-sm"
+                        : "border-gray-200 text-gray-500 hover:border-gray-300 hover:bg-gray-50"
+                    )}
+                    style={isSelected ? { backgroundColor: tag.color } : undefined}
+                  >
+                    {tag.name}
+                  </button>
+                );
+              })}
+              {selectedTags.length > 0 && (
+                <button
+                  onClick={() => setSelectedTags([])}
+                  className="px-2.5 py-1 text-xs rounded-full border border-gray-200 text-gray-400 hover:text-gray-600 hover:border-gray-300 transition-all"
+                >
+                  清除筛选
+                </button>
+              )}
+            </div>
           </div>
         </div>
         <ScrollArea className="mt-4 h-[420px] w-full rounded-md border p-4">
